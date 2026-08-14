@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-// 快捷端口预设 (Mbps)
+// 快捷端口预设 (Gbps)
 const PORT_PRESETS = [
   { label: "100 Mbps", value: 0.1 },
   { label: "1 Gbps", value: 1 },
@@ -13,33 +13,53 @@ const PORT_PRESETS = [
 ];
 
 export default function BandwidthCalculator() {
-  // 1. 月流量 ↔ 连续带宽 换算
-  const [monthlyTB, setMonthlyTB] = useState<number>(300); // 默认 300 TB/月
-  const [portSpeedGbps, setPortSpeedGbps] = useState<number>(10); // 默认 10 Gbps
-
-  // 2. 数据传输耗时计算
-  const [transferSizeTB, setTransferSizeTB] = useState<number>(50); // 50 TB 数据
-  const [transferSpeedMbps, setTransferSpeedMbps] = useState<number>(1000); // 1 Gbps (1000 Mbps)
-
-  // 3. 高级设置
-  const [tcpOverhead, setTcpOverhead] = useState<number>(3); // 3% TCP/IP Overhead
+  // 高级全局设置：TCP/IP 协议头预留
+  const [tcpOverhead, setTcpOverhead] = useState<number>(3); // 默认扣除 3% 开销
   const [copied, setCopied] = useState<boolean>(false);
 
-  // --- 核心逻辑计算 ---
+  // 1. 端口物理极限推算
+  const [portSpeedGbps, setPortSpeedGbps] = useState<number>(10); // 默认 10 Gbps
 
-  // A. 月流量换算为 7x24 连续 Mbps
-  const calculateTrafficToBandwidth = () => {
-    const totalBits = monthlyTB * 8 * 1000 * 1000; // Megabits (Decimal)
+  // 2. 限制月流量配额换算
+  const [monthlyCapTB, setMonthlyCapTB] = useState<number>(300); // 默认 300 TB/月
+
+  // 3. 数据迁移耗时计算
+  const [transferSizeTB, setTransferSizeTB] = useState<number>(50); // 默认 50 TB
+  const [transferSpeedMbps, setTransferSpeedMbps] = useState<number>(1000); // 默认 1 Gbps (1000 Mbps)
+
+  // --- 核心计算逻辑 ---
+
+  // 1. 端口物理极限与全速流量推算
+  const calculatePortProfile = () => {
+    const rawMbps = portSpeedGbps * 1000;
+    const effectiveMbps = rawMbps * (1 - tcpOverhead / 100);
+    const realSpeedMBps = effectiveMbps / 8; // 真实文件下载速度 (MB/s)
+
+    // 全速跑满月流量 (30天 = 2,592,000秒)
     const monthSeconds = 30 * 24 * 3600;
-    const avgMbps = totalBits / monthSeconds;
+    const maxMonthlyBits = rawMbps * monthSeconds; // Megabits
+    const maxMonthlyTB = maxMonthlyBits / (8 * 1000 * 1000); // TB (1000 进制)
+    const maxDailyTB = maxMonthlyTB / 30;
 
-    // TCP Overhead 调整后的有效下载速度 (MB/s)
-    const rawMbps = avgMbps * (1 - tcpOverhead / 100);
-    const avgMBps = rawMbps / 8;
+    return {
+      rawMbps,
+      realSpeedMBps,
+      maxDailyTB,
+      maxMonthlyTB,
+    };
+  };
 
-    // 全速跑满端口耗尽流量的时间
+  // 2. 月流量配额 ↔ 连续带宽等效计算
+  const calculateCapEquivalents = () => {
+    // 300 TB = 300 * 8 * 1,000,000 Megabits
+    const totalBits = monthlyCapTB * 8 * 1000 * 1000;
+    const monthSeconds = 30 * 24 * 3600;
+    const avgMbps = totalBits / monthSeconds; // 7x24 平稳连续 Mbps
+    const avgMBps = (avgMbps * (1 - tcpOverhead / 100)) / 8; // 平稳下载速率
+
+    // 在端口最高速率 (Port Speed) 下耗尽配额的时间
     const portMbps = portSpeedGbps * 1000;
-    const secondsToDeplete = portMbps > 0 ? (monthlyTB * 8 * 1000 * 1000) / portMbps : 0;
+    const secondsToDeplete = portMbps > 0 ? totalBits / portMbps : 0;
     const hoursToDeplete = secondsToDeplete / 3600;
     const daysToDeplete = hoursToDeplete / 24;
 
@@ -51,39 +71,53 @@ export default function BandwidthCalculator() {
     };
   };
 
-  // B. 传输耗时计算
+  // 3. 数据迁移耗时计算
   const calculateTransferTime = () => {
     const totalBits = transferSizeTB * 8 * 1000 * 1000; // Megabits
     const effectiveMbps = transferSpeedMbps * (1 - tcpOverhead / 100);
-    
-    if (effectiveMbps <= 0) return { days: 0, hours: 0, minutes: 0, totalSeconds: 0 };
+
+    if (effectiveMbps <= 0) return { days: 0, hours: 0, minutes: 0 };
 
     const totalSeconds = totalBits / effectiveMbps;
     const days = Math.floor(totalSeconds / (24 * 3600));
     const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
 
-    return { days, hours, minutes, totalSeconds };
+    return { days, hours, minutes };
   };
 
-  const trafficRes = calculateTrafficToBandwidth();
+  const portRes = calculatePortProfile();
+  const capRes = calculateCapEquivalents();
   const transferRes = calculateTransferTime();
+
+  // 格式化输出 MB/s 或 GB/s
+  const formatSpeed = (mbpsVal: number) => {
+    if (mbpsVal >= 1000) {
+      return `${(mbpsVal / 1000).toFixed(2)} GB/s`;
+    }
+    return `${mbpsVal.toFixed(1)} MB/s`;
+  };
 
   // 一键复制方案摘要
   const handleCopySummary = () => {
+    const portText = portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`;
     const summaryText = `====================================
-BANDWIDTH & TRAFFIC SPECIFICATION
+NETWORK BANDWIDTH & CAPACITY SUMMARY
 ====================================
-• Port Capacity: ${portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`}
-• Monthly Data Allocation: ${monthlyTB} TB / Month
-• 7x24 Continuous Equivalent Bandwidth: ~${trafficRes.avgMbps.toFixed(1)} Mbps
-• Net Transfer Speed (Excl. ${tcpOverhead}% TCP Overhead): ~${trafficRes.avgMBps.toFixed(1)} MB/s
-• Full-Speed Burnout Time (${portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} continuous): ~${trafficRes.daysToDeplete.toFixed(2)} Days (${trafficRes.hoursToDeplete.toFixed(1)} Hours)
-------------------------------------
-DATA TRANSFER TIME ESTIMATE
+1. PORT HARDWARE PROFILE
+• Port Speed: ${portText}
+• Real Max Download Speed: ~${formatSpeed(portRes.realSpeedMBps)} (Excl. ${tcpOverhead}% TCP Overhead)
+• Max Monthly Traffic (100% Uncapped): ~${portRes.maxMonthlyTB.toLocaleString(undefined, { maximumFractionDigits: 1 })} TB / Month (~${portRes.maxDailyTB.toFixed(1)} TB/Day)
+
+2. DATA CAP EQUIVALENT
+• Allocated Monthly Cap: ${monthlyCapTB} TB / Month
+• 7x24 Continuous Equivalent Bandwidth: ~${capRes.avgMbps.toFixed(1)} Mbps
+• Full-Speed Burnout Duration (@ ${portText}): ~${capRes.daysToDeplete.toFixed(2)} Days (${capRes.hoursToDeplete.toFixed(1)} Hours)
+
+3. DATA MIGRATION ESTIMATE
 • Data Volume: ${transferSizeTB} TB
 • Allocated Bandwidth: ${transferSpeedMbps} Mbps
-• Est. Time to Complete: ${transferRes.days}d ${transferRes.hours}h ${transferRes.minutes}m
+• Est. Completion Time: ${transferRes.days}d ${transferRes.hours}h ${transferRes.minutes}m
 ====================================`;
 
     navigator.clipboard.writeText(summaryText);
@@ -112,10 +146,10 @@ DATA TRANSFER TIME ESTIMATE
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Network Bandwidth & Traffic Calculator
+              Network Bandwidth & Capacity Calculator
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Convert monthly data caps (TB) to continuous Mbps, estimate port burnout duration, and calculate migration transfer time.
+              Calculate max port throughput, monthly data cap equivalents, and migration transfer time.
             </p>
           </div>
           <button
@@ -126,11 +160,11 @@ DATA TRANSFER TIME ESTIMATE
           </button>
         </div>
 
-        {/* 模块 1：月流量 ↔ 连续带宽等效转换 */}
+        {/* 模块 1：端口带宽能力与物理极限 */}
         <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
-              1. Monthly Data Cap ↔ Continuous Bandwidth Equivalent
+              1. Port Bandwidth & Uncapped Traffic Limits
             </h2>
 
             {/* 常用端口快捷选择按钮组 */}
@@ -151,22 +185,10 @@ DATA TRANSFER TIME ESTIMATE
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400 block">
-                Monthly Data Cap (TB / Month)
-              </label>
-              <input
-                type="number"
-                value={monthlyTB}
-                onChange={(e) => setMonthlyTB(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">
-                Port Speed (Gbps)
+                Port Speed Capacity (Gbps)
               </label>
               <input
                 type="number"
@@ -192,44 +214,107 @@ DATA TRANSFER TIME ESTIMATE
             </div>
           </div>
 
-          {/* 模块 1 结果展示卡片 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          {/* 模块 1 结果面板 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
-              <div className="text-xs text-gray-400">7x24 Continuous Bandwidth</div>
+              <div className="text-xs text-gray-400">Real Max Download Speed</div>
               <div className="text-2xl font-black font-mono text-emerald-400">
-                ~{trafficRes.avgMbps.toFixed(1)} Mbps
+                ~{formatSpeed(portRes.realSpeedMBps)}
               </div>
               <div className="text-[11px] text-gray-500">
-                Based on 30 days (720 hrs) flat usage
+                Excluding {tcpOverhead}% TCP/IP protocol overhead
               </div>
             </div>
 
             <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
-              <div className="text-xs text-gray-400">Real Download Throughput</div>
+              <div className="text-xs text-gray-400">Max Monthly Uncapped Traffic</div>
               <div className="text-2xl font-black font-mono text-blue-400">
-                ~{trafficRes.avgMBps.toFixed(1)} MB/s
+                ~{portRes.maxMonthlyTB.toLocaleString(undefined, { maximumFractionDigits: 1 })} TB
               </div>
               <div className="text-[11px] text-gray-500">
-                Excluding {tcpOverhead}% TCP/IP overhead
+                Running 100% full speed for 30 Days (720 hrs)
               </div>
             </div>
 
-            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1 sm:col-span-2 lg:col-span-1">
-              <div className="text-xs text-gray-400">Full Speed Burnout Duration</div>
-              <div className="text-2xl font-black font-mono text-amber-400">
-                {trafficRes.daysToDeplete.toFixed(2)} Days
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-400">Max Daily Throughput Limit</div>
+              <div className="text-2xl font-black font-mono text-purple-400">
+                ~{portRes.maxDailyTB.toFixed(1)} TB / Day
               </div>
               <div className="text-[11px] text-gray-500">
-                Running 100% max speed on a {portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} link (~{trafficRes.hoursToDeplete.toFixed(1)} hrs)
+                Maximum possible data transferred per 24 hours
               </div>
             </div>
           </div>
         </div>
 
-        {/* 模块 2：数据传输与迁移时间计算 */}
+        {/* 模块 2：限制月流量 ↔ 连续带宽换算 */}
         <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
           <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
-            2. Migration & Large File Transfer Time Estimator
+            2. Monthly Data Cap ↔ Continuous Bandwidth Equivalent
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 block">
+                Allocated Monthly Data Cap (TB / Month)
+              </label>
+              <input
+                type="number"
+                value={monthlyCapTB}
+                onChange={(e) => setMonthlyCapTB(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 block">
+                Current Port Speed Context
+              </label>
+              <div className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-3 text-sm text-gray-300 font-mono">
+                {portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} Port
+              </div>
+            </div>
+          </div>
+
+          {/* 模块 2 结果面板 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-400">7x24 Continuous Bandwidth</div>
+              <div className="text-2xl font-black font-mono text-emerald-400">
+                ~{capRes.avgMbps.toFixed(1)} Mbps
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Flat usage over 30 days (720 hrs)
+              </div>
+            </div>
+
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-400">Flat Continuous Download Speed</div>
+              <div className="text-2xl font-black font-mono text-blue-400">
+                ~{capRes.avgMBps.toFixed(1)} MB/s
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Average download speed if spread evenly
+              </div>
+            </div>
+
+            <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
+              <div className="text-xs text-gray-400">Full-Speed Burnout Duration</div>
+              <div className="text-2xl font-black font-mono text-amber-400">
+                {capRes.daysToDeplete.toFixed(2)} Days
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Running 100% max speed on {portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} (~{capRes.hoursToDeplete.toFixed(1)} hrs)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 模块 3：数据传输与迁移时间计算 */}
+        <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
+          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
+            3. Migration & Large File Transfer Time Estimator
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

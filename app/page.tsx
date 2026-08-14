@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 export default function Home() {
-  // 默认固定为英文模式
+  // 默认固定为英文模式 (English First)
   const [lang, setLang] = useState<"en" | "zh">("en");
   const [driveType, setDriveType] = useState<"nvme" | "sata">("nvme");
   const [bayCount, setBayCount] = useState<number>(24);
@@ -279,7 +279,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Global Standard Sales Contact Section (Strict English Default) */}
+        {/* Global Standard Sales Contact Section */}
         <section
           id="contact-section"
           className="bg-gradient-to-br from-blue-900/30 via-gray-900 to-indigo-950/40 border border-blue-500/30 rounded-2xl p-6 sm:p-8 space-y-4 shadow-2xl relative overflow-hidden"
@@ -298,27 +298,25 @@ export default function Home() {
 
           <div className="flex flex-wrap gap-4 pt-2">
             <a
-              href="https://t.me/your_telegram"
+              href="https://t.me/thunderserv"
               target="_blank"
               rel="noreferrer"
               className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
             >
-              <span>✈️ Telegram Support</span>
+              <span>✈️ Telegram Support (@thunderserv)</span>
             </a>
             <a
-              href="https://thunderserv.com/submitticket.php"
-              target="_blank"
-              rel="noreferrer"
+              href="mailto:admin@thunderserv.com"
               className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
             >
               <span>✉️ Submit Enterprise Inquiry</span>
             </a>
           </div>
 
-          {/* 只有当用户显式点击切换为中文时，才会在下方增加微信专区 */}
+          {/* 切换为中文时显示的提示 */}
           {lang === "zh" && (
-            <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-300 flex items-center space-x-2">
-              <span>💬 大中华区专属客服微信 (WeChat): <strong className="text-blue-400">YourWeChatID</strong></span>
+            <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-300">
+              <span>💬 大中华区企业咨询，请直接通过 Telegram 联系 <strong className="text-blue-400">@thunderserv</strong> 或发送邮件至 <strong className="text-blue-400">admin@thunderserv.com</strong>。</span>
             </div>
           )}
         </section>

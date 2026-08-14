@@ -39,7 +39,7 @@ export default function Home() {
             </p>
           </div>
           <Link
-            href="/raid"
+            href="/raid-calculator"
             className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
           >
             {t("card.open")}
@@ -63,7 +63,7 @@ export default function Home() {
             </p>
           </div>
           <Link
-            href="/bandwidth"
+            href="/bandwidth-calculator"
             className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
           >
             {t("card.open")}
@@ -87,7 +87,7 @@ export default function Home() {
             </p>
           </div>
           <Link
-            href="/ip"
+            href="/subnet-calculator"
             className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
           >
             {t("card.open")}

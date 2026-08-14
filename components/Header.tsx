@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function Header() {
@@ -10,16 +11,16 @@ export default function Header() {
     <header className="border-b border-gray-800 bg-[#0b0f19] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <a href="/" className="flex items-center space-x-3">
+        <Link href="/" className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xl text-white">
             ⚡
           </div>
           <span className="font-bold text-xl tracking-wider text-white">
             ThunderServ <span className="text-blue-500 font-normal text-sm">Tools</span>
           </span>
-        </a>
+        </Link>
 
-        {/* 右侧悬浮 Globe + EN/中文 微调框 */}
+        {/* 右侧悬浮：中英文切换 + Contact TG */}
         <div className="flex items-center space-x-4">
           <div className="relative flex items-center bg-gray-900 border border-gray-700/80 rounded-lg p-1 space-x-1 shadow-inner">
             <div className="px-1.5 text-gray-400">
@@ -53,11 +54,15 @@ export default function Header() {
             </button>
           </div>
 
+          {/* Telegram 联系按钮 */}
           <a
-            href="#contact"
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
+            href="https://t.me/your_telegram_username" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition flex items-center gap-1.5"
           >
-            {t("nav.contact")}
+            <span>💬</span>
+            <span>{t("nav.contact")}</span>
           </a>
         </div>
       </div>

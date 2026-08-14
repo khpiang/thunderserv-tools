@@ -12,10 +12,15 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
+    // Header
     "nav.contact": "Contact Sales Advisory",
+    
+    // Hero Section
     "hero.title": "Enterprise Infrastructure",
     "hero.title_accent": "Toolbox",
     "hero.subtitle": "Free, fast, and precise utilities designed for IT architects, system administrators, and bare-metal server operators.",
+    
+    // Tool Cards
     "card.raid.title": "RAID & NVMe Storage Calculator",
     "card.raid.desc": "Calculate raw vs. usable capacity, parity overhead, and IOPS for enterprise bare-metal arrays.",
     "card.bandwidth.title": "Bandwidth & Monthly Traffic Calculator",
@@ -25,12 +30,24 @@ const translations: Record<Language, Record<string, string>> = {
     "card.open": "Open Utility →",
     "badge.popular": "POPULAR",
     "badge.new": "NEW",
+    
+    // Contact Section
+    "contact.title": "Need Enterprise IaaS Solutions or Custom Hardware?",
+    "contact.subtitle": "Get in touch with our infrastructure experts for high-bandwidth bare-metal, custom routing, or wholesale server deployment.",
+    "contact.tg": "Telegram Support",
+    "contact.email": "Sales Email",
+    "contact.response": "Typical response time: < 15 mins",
   },
   zh: {
+    // Header
     "nav.contact": "联系架构师咨询",
+    
+    // Hero Section
     "hero.title": "企业级 IT 基础设施",
     "hero.title_accent": "工具箱",
     "hero.subtitle": "专为 IT 架构师、系统管理员及裸金属服务器运维人员打造的精准计算与规划工具。",
+    
+    // Tool Cards
     "card.raid.title": "RAID & NVMe 存储容量计算器",
     "card.raid.desc": "精准计算裸磁盘容量、实际可用容量、校验开销及企业级阵列 IOPS。",
     "card.bandwidth.title": "网络带宽与月流量计算器",
@@ -40,6 +57,13 @@ const translations: Record<Language, Record<string, string>> = {
     "card.open": "打开工具 →",
     "badge.popular": "热门",
     "badge.new": "最新",
+    
+    // Contact Section
+    "contact.title": "需要企业级 IaaS 方案或定制服务器硬件？",
+    "contact.subtitle": "联系我们的基础设施架构师，获取大带宽裸金属、定制网络路由或服务器批发部署方案。",
+    "contact.tg": "Telegram 快捷沟通",
+    "contact.email": "商务与技术邮箱",
+    "contact.response": "平均响应时间：< 15 分钟",
   },
 };
 

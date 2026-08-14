@@ -3,8 +3,6 @@
 import React, { useState } from "react";
 
 export default function Home() {
-  // 默认固定为英文模式 (English First)
-  const [lang, setLang] = useState<"en" | "zh">("en");
   const [driveType, setDriveType] = useState<"nvme" | "sata">("nvme");
   const [bayCount, setBayCount] = useState<number>(24);
   const [driveSize, setDriveSize] = useState<number>(18); // TB
@@ -79,12 +77,6 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setLang(lang === "en" ? "zh" : "en")}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-700 bg-gray-800/50 hover:border-gray-500 transition text-gray-200"
-            >
-              {lang === "en" ? "🌐 Switch Language (中文)" : "🌐 Switch Language (English)"}
-            </button>
             <a
               href="#contact-section"
               className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-600/20"
@@ -106,14 +98,10 @@ export default function Home() {
         {/* Title */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {lang === "en" 
-              ? "Enterprise RAID & NVMe Storage Capacity Calculator" 
-              : "企业级 RAID & NVMe 存储阵列容量计算器"}
+            Enterprise RAID & NVMe Storage Capacity Calculator
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            {lang === "en"
-              ? "Calculate raw vs. usable storage, parity overhead, and estimated IOPS performance metrics for enterprise bare-metal deployments."
-              : "精确计算企业级 Bare-Metal 独服阵列的真实可用容量、冗余开销及 IOPS 性能指标。"}
+            Calculate raw vs. usable storage, parity overhead, and estimated IOPS performance metrics for enterprise bare-metal deployments.
           </p>
         </div>
 
@@ -123,13 +111,13 @@ export default function Home() {
           {/* Left: Input Panel */}
           <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-xl">
             <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">
-              {lang === "en" ? "1. Configuration Parameters" : "1. 阵列配置参数"}
+              1. Configuration Parameters
             </h2>
 
             {/* Drive Interface */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "Drive Interface / Media Type" : "硬盘接口类型"}
+                Drive Interface / Media Type
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -159,7 +147,7 @@ export default function Home() {
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="font-semibold text-gray-400">
-                  {lang === "en" ? "Number of Drive Bays" : "硬盘数量 (Bays)"}
+                  Number of Drive Bays
                 </span>
                 <span className="font-bold text-blue-400 text-sm">{bayCount} Bays</span>
               </div>
@@ -177,7 +165,7 @@ export default function Home() {
             {/* Drive Size */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "Single Drive Capacity" : "单盘容量"}
+                Single Drive Capacity
               </label>
               <select
                 value={driveSize}
@@ -197,7 +185,7 @@ export default function Home() {
             {/* RAID Level */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "RAID / ZFS Array Type" : "RAID / ZFS 阵列类型"}
+                RAID / ZFS Array Type
               </label>
               <select
                 value={raidLevel}
@@ -217,19 +205,19 @@ export default function Home() {
           <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-xl flex flex-col justify-between">
             <div>
               <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">
-                {lang === "en" ? "2. Array Capacity & Performance" : "2. 计算结果与性能指标"}
+                2. Array Capacity & Performance
               </h2>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
                 <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">{lang === "en" ? "Usable Capacity" : "实际可用容量"}</div>
+                  <div className="text-xs text-gray-400">Usable Capacity</div>
                   <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-1">
                     {results.usableCapacity} <span className="text-sm text-gray-400 font-normal">TB</span>
                   </div>
                 </div>
 
                 <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">{lang === "en" ? "Parity Overhead" : "冗余开销"}</div>
+                  <div className="text-xs text-gray-400">Parity Overhead</div>
                   <div className="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-1">
                     {results.parityCapacity} <span className="text-sm text-gray-400 font-normal">TB</span>
                   </div>
@@ -239,7 +227,7 @@ export default function Home() {
               {/* Progress Bar */}
               <div className="mt-6 space-y-2">
                 <div className="flex justify-between text-xs text-gray-400">
-                  <span>{lang === "en" ? "Storage Efficiency Rate" : "存储利用率"}</span>
+                  <span>Storage Efficiency Rate</span>
                   <span className="font-bold text-white">{results.efficiency}%</span>
                 </div>
                 <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden flex">
@@ -257,11 +245,11 @@ export default function Home() {
               {/* IOPS */}
               <div className="mt-6 border-t border-gray-800 pt-4 grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-gray-400 block">{lang === "en" ? "Est. Read IOPS" : "预估读取 IOPS"}</span>
+                  <span className="text-gray-400 block">Est. Read IOPS</span>
                   <span className="font-bold text-white text-base">~{results.estReadIops}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">{lang === "en" ? "Est. Write IOPS" : "预估写入 IOPS"}</span>
+                  <span className="text-gray-400 block">Est. Write IOPS</span>
                   <span className="font-bold text-white text-base">~{results.estWriteIops}</span>
                 </div>
               </div>
@@ -270,10 +258,10 @@ export default function Home() {
             {/* Quick Action */}
             <div className="pt-4 border-t border-gray-800">
               <button
-                onClick={() => alert(lang === "en" ? "Configuration Summary Copied!" : "配置摘要已复制！")}
+                onClick={() => alert("Configuration Summary Copied!")}
                 className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs py-2.5 rounded-lg font-semibold transition"
               >
-                {lang === "en" ? "Copy Configuration Summary" : "复制当前配置摘要"}
+                Copy Configuration Summary
               </button>
             </div>
           </div>
@@ -312,31 +300,18 @@ export default function Home() {
               <span>✉️ Submit Enterprise Inquiry</span>
             </a>
           </div>
-
-          {/* 切换为中文时显示的提示 */}
-          {lang === "zh" && (
-            <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-300">
-              <span>💬 大中华区企业咨询，请直接通过 Telegram 联系 <strong className="text-blue-400">@thunderserv</strong> 或发送邮件至 <strong className="text-blue-400">admin@thunderserv.com</strong>。</span>
-            </div>
-          )}
         </section>
 
         {/* Article SEO Section */}
         <article className="prose prose-invert max-w-none bg-[#111827]/50 border border-gray-800 rounded-2xl p-6 sm:p-8 text-sm text-gray-400 space-y-4">
           <h3 className="text-lg font-bold text-white">
-            {lang === "en"
-              ? "Understanding Storage Efficiency & Parity Overhead in Enterprise Arrays"
-              : "企业级存储阵列可用容量与选型指南"}
+            Understanding Storage Efficiency & Parity Overhead in Enterprise Arrays
           </h3>
           <p>
-            {lang === "en"
-              ? "When deploying high-density enterprise servers (such as 12-Bay or 24-Bay Bare-Metal chassis), calculating usable storage requires accounting for parity overhead, binary vs. decimal unit conversions, and filesystem reservation space."
-              : "在部署高密度企业级服务器（如 12 盘位或 24 盘位 Bare-Metal）时，实际可用容量受冗余阵列级别、二进制与十进制换算以及文件系统预留开销的综合影响。"}
+            When deploying high-density enterprise servers (such as 12-Bay or 24-Bay Bare-Metal chassis), calculating usable storage requires accounting for parity overhead, binary vs. decimal unit conversions, and filesystem reservation space.
           </p>
           <p>
-            {lang === "en"
-              ? "For write-intensive and high-IOPS database operations, RAID 10 is strongly recommended due to zero parity calculation overhead. For high-capacity backup repositories or cold storage, RAID 6 or ZFS RAID-Z2 provides optimal dual-parity protection against simultaneous drive failures."
-              : "对于高并发读写及高 IOPS 需求的数据库业务，强烈推荐 RAID 10；对于大容量备份或冷存储需求，RAID 6 或 ZFS RAID-Z2 可提供优秀的双盘冗余保障。"}
+            For write-intensive and high-IOPS database operations, RAID 10 is strongly recommended due to zero parity calculation overhead. For high-capacity backup repositories or cold storage, RAID 6 or ZFS RAID-Z2 provides optimal dual-parity protection against simultaneous drive failures.
           </p>
         </article>
 

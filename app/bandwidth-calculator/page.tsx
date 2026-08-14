@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 
-// 快捷端口预设 (Gbps)
+// Port Speed Presets (Gbps)
 const PORT_PRESETS = [
   { label: "100 Mbps", value: 0.1 },
   { label: "1 Gbps", value: 1 },
@@ -12,7 +12,7 @@ const PORT_PRESETS = [
   { label: "400 Gbps", value: 400 },
 ];
 
-// 快捷月流量预设 (TB)
+// Monthly Data Cap Presets (TB)
 const CAP_PRESETS = [
   { label: "10 TB", value: 10 },
   { label: "50 TB", value: 50 },
@@ -22,7 +22,7 @@ const CAP_PRESETS = [
   { label: "1 PB (1000 TB)", value: 1000 },
 ];
 
-// 快捷迁移数据量预设 (TB)
+// Migration Data Size Presets (TB)
 const MIGRATION_SIZE_PRESETS = [
   { label: "1 TB", value: 1 },
   { label: "10 TB", value: 10 },
@@ -32,15 +32,15 @@ const MIGRATION_SIZE_PRESETS = [
 ];
 
 export default function BandwidthCalculator() {
-  // 当前选中的 Tab
+  // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<"port" | "cap" | "migration">("port");
   
-  // 通用设置
-  const [tcpOverhead, setTcpOverhead] = useState<number>(3); // 默认扣除 3% TCP/IP Overhead
+  // Global Settings
+  const [tcpOverhead, setTcpOverhead] = useState<number>(3); // Default 3% TCP/IP Overhead Deduction
   const [copied, setCopied] = useState<boolean>(false);
 
   // ----------------------------------------------------
-  // 模块 1 独立状态：端口极限计算
+  // Module 1 State: Port Capacity
   // ----------------------------------------------------
   const [portSpeedGbps, setPortSpeedGbps] = useState<number>(10);
 
@@ -58,7 +58,7 @@ export default function BandwidthCalculator() {
   };
 
   // ----------------------------------------------------
-  // 模块 2 独立状态：流量配额换算
+  // Module 2 State: Data Cap Equivalent
   // ----------------------------------------------------
   const [monthlyCapTB, setMonthlyCapTB] = useState<number>(300);
 
@@ -72,7 +72,7 @@ export default function BandwidthCalculator() {
   };
 
   // ----------------------------------------------------
-  // 模块 3 独立状态：数据迁移耗时
+  // Module 3 State: Migration Time Estimator
   // ----------------------------------------------------
   const [transferSizeTB, setTransferSizeTB] = useState<number>(50);
   const [transferSpeedMbps, setTransferSpeedMbps] = useState<number>(1000);
@@ -95,7 +95,7 @@ export default function BandwidthCalculator() {
   const capRes = calculateCapProfile();
   const migrationRes = calculateMigrationProfile();
 
-  // 格式化输出 MB/s 或 GB/s
+  // Speed Formatting (MB/s or GB/s)
   const formatSpeed = (mbpsVal: number) => {
     if (mbpsVal >= 1000) {
       return `${(mbpsVal / 1000).toFixed(2)} GB/s`;
@@ -103,7 +103,7 @@ export default function BandwidthCalculator() {
     return `${mbpsVal.toFixed(1)} MB/s`;
   };
 
-  // 一键复制摘要（根据当前 Tab 复制）
+  // One-click Copy Summary per Tab
   const handleCopySummary = () => {
     let summaryText = "";
     if (activeTab === "port") {
@@ -141,7 +141,7 @@ DATA MIGRATION ESTIMATE
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-gray-100 font-sans">
-      {/* 统一 Header */}
+      {/* Header */}
       <header className="border-b border-gray-800 bg-[#111827]/80 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <a href="/" className="flex items-center space-x-3">
@@ -160,21 +160,21 @@ DATA MIGRATION ESTIMATE
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Network Bandwidth & Traffic Calculator
+              Network Bandwidth & Capacity Calculator
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Independent calculation tools for port limits, monthly data cap equivalents, and migration time.
+              Independent evaluation tools for port throughput limits, monthly data cap equivalents, and migration transfer time.
             </p>
           </div>
           <button
             onClick={handleCopySummary}
             className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center space-x-2 border border-blue-400/30 shadow-lg shadow-blue-600/20"
           >
-            <span>{copied ? "✓ Copied Current Section!" : "📋 Copy Section Summary"}</span>
+            <span>{copied ? "✓ Copied to Clipboard!" : "📋 Copy Section Summary"}</span>
           </button>
         </div>
 
-        {/* 顶部 Tab 切换 */}
+        {/* Navigation Tabs */}
         <div className="flex space-x-2 border-b border-gray-800 pb-2">
           <button
             onClick={() => setActiveTab("port")}
@@ -184,7 +184,7 @@ DATA MIGRATION ESTIMATE
                 : "bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            1. Port Capacity (端口上限)
+            1. Port Capacity Limits
           </button>
           <button
             onClick={() => setActiveTab("cap")}
@@ -194,7 +194,7 @@ DATA MIGRATION ESTIMATE
                 : "bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            2. Data Cap Equivalent (流量配额)
+            2. Data Cap Converter
           </button>
           <button
             onClick={() => setActiveTab("migration")}
@@ -204,20 +204,20 @@ DATA MIGRATION ESTIMATE
                 : "bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800"
             }`}
           >
-            3. Migration Time (迁移耗时)
+            3. Migration Estimator
           </button>
         </div>
 
         {/* =================================================== */}
-        {/* TAB 1: 端口性能与跑满流量计算器 */}
+        {/* TAB 1: Port Capacity Limits */}
         {/* =================================================== */}
         {activeTab === "port" && (
           <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
             <div className="flex flex-col space-y-3">
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
-                Port Speed Hardware Capability
+                Port Hardware Capabilities
               </h2>
-              {/* 快捷点击 preset */}
+              {/* Presets */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-gray-400">Presets:</span>
                 {PORT_PRESETS.map((p) => (
@@ -265,7 +265,7 @@ DATA MIGRATION ESTIMATE
               </div>
             </div>
 
-            {/* 结果区域 */}
+            {/* Results */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-800">
               <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
                 <div className="text-xs text-gray-400">Real Max Download Speed</div>
@@ -301,7 +301,7 @@ DATA MIGRATION ESTIMATE
         )}
 
         {/* =================================================== */}
-        {/* TAB 2: 月流量配额折算器 */}
+        {/* TAB 2: Data Cap Converter */}
         {/* =================================================== */}
         {activeTab === "cap" && (
           <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
@@ -309,7 +309,7 @@ DATA MIGRATION ESTIMATE
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
                 Monthly Data Cap Converter
               </h2>
-              {/* 快捷点击 preset */}
+              {/* Presets */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-gray-400">Presets:</span>
                 {CAP_PRESETS.map((c) => (
@@ -356,7 +356,7 @@ DATA MIGRATION ESTIMATE
               </div>
             </div>
 
-            {/* 结果区域 */}
+            {/* Results */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800">
               <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
                 <div className="text-xs text-gray-400">7x24 Continuous Bandwidth</div>
@@ -382,15 +382,15 @@ DATA MIGRATION ESTIMATE
         )}
 
         {/* =================================================== */}
-        {/* TAB 3: 数据迁移耗时估算器 */}
+        {/* TAB 3: Migration Estimator */}
         {/* =================================================== */}
         {activeTab === "migration" && (
           <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
             <div className="flex flex-col space-y-3">
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
-                Migration & Transfer Time Estimator
+                Migration Transfer Time Estimator
               </h2>
-              {/* 快捷点击 preset */}
+              {/* Presets */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-gray-400">Data Presets:</span>
                 {MIGRATION_SIZE_PRESETS.map((m) => (
@@ -435,7 +435,7 @@ DATA MIGRATION ESTIMATE
               </div>
             </div>
 
-            {/* 结果区域 */}
+            {/* Results */}
             <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
               <div>
                 <div className="text-xs text-gray-400">Estimated Completion Time</div>

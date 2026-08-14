@@ -3,14 +3,12 @@
 import React, { useState } from "react";
 
 export default function Home() {
-  // 状态控制：默认英文，保障国际客户第一印象
-  const [lang, setLang] = useState<"en" | "zh">("en");
   const [driveType, setDriveType] = useState<"nvme" | "sata">("nvme");
   const [bayCount, setBayCount] = useState<number>(24);
   const [driveSize, setDriveSize] = useState<number>(18); // TB
   const [raidLevel, setRaidLevel] = useState<string>("raid10");
 
-  // 容量计算逻辑
+  // Storage calculation logic
   const calculateStorage = () => {
     const rawCapacity = bayCount * driveSize;
     let usableCapacity = 0;
@@ -45,7 +43,7 @@ export default function Home() {
 
     const efficiency = rawCapacity > 0 ? (usableCapacity / rawCapacity) * 100 : 0;
     
-    // IOPS 估算
+    // IOPS Estimation
     const baseIops = driveType === "nvme" ? 50000 : 250;
     const estReadIops = Math.round(bayCount * baseIops);
     const estWriteIops = raidLevel === "raid10" 
@@ -79,18 +77,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* 语言切换按钮 */}
-            <button
-              onClick={() => setLang(lang === "en" ? "zh" : "en")}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-700 bg-gray-800/50 hover:border-gray-500 transition text-gray-200"
-            >
-              {lang === "en" ? "🌐 English / 中文" : "🌐 中文 / English"}
-            </button>
             <a
-              href="#contact-section"
+              href="https://thunderserv.com/submitticket.php"
+              target="_blank"
+              rel="noreferrer"
               className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-600/20"
             >
-              {lang === "en" ? "Consult Sales" : "联系架构师"}
+              Contact Sales Advisory
             </a>
           </div>
         </div>
@@ -101,20 +94,16 @@ export default function Home() {
         
         {/* AdSense Slot */}
         <div className="w-full h-24 bg-gray-900/50 border border-dashed border-gray-800 rounded-xl flex items-center justify-center text-xs text-gray-500">
-          [ AdSense / Sponsor Banner Slot ]
+          [ Advertisement / Sponsor Banner ]
         </div>
 
         {/* Title */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {lang === "en" 
-              ? "Enterprise RAID & NVMe Storage Capacity Calculator" 
-              : "企业级 RAID & NVMe 存储阵列容量计算器"}
+            Enterprise RAID & NVMe Storage Capacity Calculator
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            {lang === "en"
-              ? "Calculate raw vs. usable storage, parity overhead, and estimated IOPS performance for bare-metal deployments."
-              : "精确计算企业级 Bare-Metal 独服阵列的真实可用容量、冗余开销及 IOPS 性能指标。"}
+            Calculate raw vs. usable storage, parity overhead, and estimated IOPS performance metrics for enterprise bare-metal deployments.
           </p>
         </div>
 
@@ -124,13 +113,13 @@ export default function Home() {
           {/* Left: Input Panel */}
           <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-xl">
             <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">
-              {lang === "en" ? "1. Configuration" : "1. 阵列配置"}
+              1. Configuration Parameters
             </h2>
 
             {/* Drive Interface */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "Drive Interface / Media Type" : "硬盘接口类型"}
+                Drive Interface / Media Type
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -160,7 +149,7 @@ export default function Home() {
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="font-semibold text-gray-400">
-                  {lang === "en" ? "Number of Drive Bays" : "硬盘数量 (Bay Count)"}
+                  Number of Drive Bays
                 </span>
                 <span className="font-bold text-blue-400 text-sm">{bayCount} Bays</span>
               </div>
@@ -178,7 +167,7 @@ export default function Home() {
             {/* Drive Size */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "Single Drive Capacity" : "单盘容量"}
+                Single Drive Capacity
               </label>
               <select
                 value={driveSize}
@@ -198,18 +187,18 @@ export default function Home() {
             {/* RAID Level */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400">
-                {lang === "en" ? "RAID / ZFS Array Type" : "RAID / ZFS 阵列类型"}
+                RAID / ZFS Array Type
               </label>
               <select
                 value={raidLevel}
                 onChange={(e) => setRaidLevel(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500"
               >
-                <option value="raid0">RAID 0 (Striping - High Speed, No Fault Tolerance)</option>
-                <option value="raid1">RAID 1 (Mirroring - Full Fault Tolerance)</option>
+                <option value="raid0">RAID 0 (Striping - Maximum Performance, Zero Fault Tolerance)</option>
+                <option value="raid1">RAID 1 (Mirroring - Full Redundancy)</option>
                 <option value="raid5">RAID 5 (Single Parity - Balanced)</option>
-                <option value="raid6">RAID 6 / ZFS RAID-Z2 (Dual Parity - High Redundancy)</option>
-                <option value="raid10">RAID 10 (Striped Mirror - Recommended Performance)</option>
+                <option value="raid6">RAID 6 / ZFS RAID-Z2 (Dual Parity - High Fault Tolerance)</option>
+                <option value="raid10">RAID 10 (Striped Mirror - Recommended for Production)</option>
               </select>
             </div>
           </div>
@@ -218,19 +207,19 @@ export default function Home() {
           <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6 shadow-xl flex flex-col justify-between">
             <div>
               <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">
-                {lang === "en" ? "2. Calculated Output" : "2. 计算结果与性能指标"}
+                2. Array Capacity & Performance
               </h2>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
                 <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">{lang === "en" ? "Usable Capacity" : "实际可用容量"}</div>
+                  <div className="text-xs text-gray-400">Usable Capacity</div>
                   <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-1">
                     {results.usableCapacity} <span className="text-sm text-gray-400 font-normal">TB</span>
                   </div>
                 </div>
 
                 <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">{lang === "en" ? "Parity Overhead" : "冗余开销"}</div>
+                  <div className="text-xs text-gray-400">Parity Overhead</div>
                   <div className="text-2xl sm:text-3xl font-extrabold text-amber-500 mt-1">
                     {results.parityCapacity} <span className="text-sm text-gray-400 font-normal">TB</span>
                   </div>
@@ -240,7 +229,7 @@ export default function Home() {
               {/* Progress Bar */}
               <div className="mt-6 space-y-2">
                 <div className="flex justify-between text-xs text-gray-400">
-                  <span>{lang === "en" ? "Storage Efficiency" : "存储利用率"}</span>
+                  <span>Storage Efficiency Rate</span>
                   <span className="font-bold text-white">{results.efficiency}%</span>
                 </div>
                 <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden flex">
@@ -258,11 +247,11 @@ export default function Home() {
               {/* IOPS */}
               <div className="mt-6 border-t border-gray-800 pt-4 grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-gray-400 block">{lang === "en" ? "Est. Read IOPS" : "预估读取 IOPS"}</span>
+                  <span className="text-gray-400 block">Est. Read IOPS</span>
                   <span className="font-bold text-white text-base">~{results.estReadIops}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">{lang === "en" ? "Est. Write IOPS" : "预估写入 IOPS"}</span>
+                  <span className="text-gray-400 block">Est. Write IOPS</span>
                   <span className="font-bold text-white text-base">~{results.estWriteIops}</span>
                 </div>
               </div>
@@ -271,92 +260,62 @@ export default function Home() {
             {/* Quick Action */}
             <div className="pt-4 border-t border-gray-800">
               <button
-                onClick={() => alert(lang === "en" ? "Configuration Link Copied!" : "配置链接已复制！")}
+                onClick={() => alert("Configuration Summary Copied!")}
                 className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs py-2.5 rounded-lg font-semibold transition"
               >
-                {lang === "en" ? "Copy Configuration Summary" : "复制当前配置摘要"}
+                Copy Configuration Summary
               </button>
             </div>
           </div>
         </div>
 
-        {/* 动态自适应 B2B 导流区 (核心改进处) */}
+        {/* Pure US English B2B Conversion CTA */}
         <section
           id="contact-section"
           className="bg-gradient-to-br from-blue-900/30 via-gray-900 to-indigo-950/40 border border-blue-500/30 rounded-2xl p-6 sm:p-8 space-y-4 shadow-2xl relative overflow-hidden"
         >
           <div className="max-w-3xl space-y-2">
             <span className="bg-blue-600/30 text-blue-400 border border-blue-500/40 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full">
-              {lang === "en" ? "Enterprise Infrastructure Advisory" : "企业级架构与硬件咨询"}
+              Enterprise Infrastructure Advisory
             </span>
             <h3 className="text-xl sm:text-2xl font-bold text-white">
-              {lang === "en"
-                ? "Looking for Custom High-Density Bare-Metal Deployments?"
-                : "需要高密度大容量美国独服，或 CN2 GIA/CMI 回国优化线路？"}
+              Need High-Density Bare-Metal or Custom Storage Nodes?
             </h3>
             <p className="text-gray-300 text-sm leading-relaxed">
-              {lang === "en"
-                ? "We specialize in custom enterprise bare-metal solutions in US West (Los Angeles & San Jose). Offering high-bay NVMe storage nodes, unmetered 10Gbps bandwidth, and dedicated subnet allocations."
-                : "专精美西机房（洛杉矶/圣何塞）12/24 盘位高密度 NVMe 存储型 Bare-Metal 独服。提供 CN2 GIA、联通 9929、移动 CMI 优质优化线路及多 IP 站群方案。"}
+              We engineer enterprise bare-metal solutions in US West data centers (Los Angeles & San Jose). Featuring 12/24-Bay NVMe storage nodes, unmetered 10Gbps connectivity, and dedicated subnet allocations.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-4 pt-2">
-            {lang === "en" ? (
-              // 英文模式导流按钮：Telegram Direct & Email Ticket System
-              <>
-                <a
-                  href="https://t.me/your_telegram"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✈️ Telegram Support</span>
-                </a>
-                <a
-                  href="https://thunderserv.com/submitticket.php"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✉️ Submit Enterprise Ticket</span>
-                </a>
-              </>
-            ) : (
-              // 中文模式导流按钮：Telegram & 微信
-              <>
-                <a
-                  href="https://t.me/your_telegram"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✈️ Telegram 咨询</span>
-                </a>
-                <div className="bg-gray-800/80 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl flex items-center space-x-2">
-                  <span>💬 微信 (WeChat): <strong className="text-blue-400">YourWeChatID</strong></span>
-                </div>
-              </>
-            )}
+            <a
+              href="https://t.me/your_telegram"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
+            >
+              <span>✈️ Telegram Support</span>
+            </a>
+            <a
+              href="https://thunderserv.com/submitticket.php"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
+            >
+              <span>✉️ Submit Enterprise Inquiry</span>
+            </a>
           </div>
         </section>
 
-        {/* 文章 SEO 区 */}
+        {/* Article SEO Section */}
         <article className="prose prose-invert max-w-none bg-[#111827]/50 border border-gray-800 rounded-2xl p-6 sm:p-8 text-sm text-gray-400 space-y-4">
           <h3 className="text-lg font-bold text-white">
-            {lang === "en" 
-              ? "Understanding Storage Efficiency & Parity Overhead in Enterprise Arrays" 
-              : "企业级存储阵列可用容量与选型指南"}
+            Understanding Storage Efficiency & Parity Overhead in Enterprise Arrays
           </h3>
           <p>
-            {lang === "en"
-              ? "When deploying high-density enterprise servers (such as 12-Bay or 24-Bay Bare-Metal chassis), calculating usable storage requires accounting for parity overhead, binary vs. decimal unit conversions, and filesystem reservation space."
-              : "在部署高密度企业级服务器（如 12 盘位或 24 盘位 Bare-Metal）时，实际可用容量受冗余阵列级别、二进制与十进制换算以及文件系统预留开销的综合影响。"}
+            When deploying high-density enterprise servers (such as 12-Bay or 24-Bay Bare-Metal chassis), calculating usable storage requires accounting for parity overhead, binary vs. decimal unit conversions, and filesystem reservation space.
           </p>
           <p>
-            {lang === "en"
-              ? "For write-intensive and high-IOPS database operations, RAID 10 is recommended. For high-capacity backup nodes or cold storage, RAID 6 or ZFS RAID-Z2 provides optimal dual-parity protection."
-              : "对于高并发读写及高 IOPS 需求的数据库业务，强烈推荐 RAID 10；对于大容量备份或冷存储需求，RAID 6 或 ZFS RAID-Z2 可提供优秀的双盘冗余保障。"}
+            For write-intensive and high-IOPS database operations, RAID 10 is strongly recommended due to zero parity calculation overhead. For high-capacity backup repositories or cold storage, RAID 6 or ZFS RAID-Z2 provides optimal dual-parity protection against simultaneous drive failures.
           </p>
         </article>
 

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 export default function Home() {
-  // 强制默认开启英文 (English First)
+  // 默认固定为英文模式
   const [lang, setLang] = useState<"en" | "zh">("en");
   const [driveType, setDriveType] = useState<"nvme" | "sata">("nvme");
   const [bayCount, setBayCount] = useState<number>(24);
@@ -79,18 +79,17 @@ export default function Home() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* 语言手动切换按钮：只有用户主动点击才会切到中文 */}
             <button
               onClick={() => setLang(lang === "en" ? "zh" : "en")}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-700 bg-gray-800/50 hover:border-gray-500 transition text-gray-200"
             >
-              {lang === "en" ? "🌐 English / 中文" : "🌐 中文 / English"}
+              {lang === "en" ? "🌐 Switch Language (中文)" : "🌐 Switch Language (English)"}
             </button>
             <a
               href="#contact-section"
               className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-md shadow-blue-600/20"
             >
-              {lang === "en" ? "Consult Sales" : "联系架构师"}
+              Contact Sales Advisory
             </a>
           </div>
         </div>
@@ -280,65 +279,48 @@ export default function Home() {
           </div>
         </div>
 
-        {/* B2B Conversion Area: Strictly Isolated by Language State */}
+        {/* Global Standard Sales Contact Section (Strict English Default) */}
         <section
           id="contact-section"
           className="bg-gradient-to-br from-blue-900/30 via-gray-900 to-indigo-950/40 border border-blue-500/30 rounded-2xl p-6 sm:p-8 space-y-4 shadow-2xl relative overflow-hidden"
         >
           <div className="max-w-3xl space-y-2">
             <span className="bg-blue-600/30 text-blue-400 border border-blue-500/40 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full">
-              {lang === "en" ? "Enterprise Infrastructure Advisory" : "企业级架构与硬件咨询"}
+              Enterprise Infrastructure Advisory
             </span>
             <h3 className="text-xl sm:text-2xl font-bold text-white">
-              {lang === "en"
-                ? "Need High-Density Bare-Metal or Custom Storage Nodes?"
-                : "需要高密度大容量美西独服，或 CN2 GIA/CMI 回国优化线路？"}
+              Need High-Density Bare-Metal or Custom Storage Nodes?
             </h3>
             <p className="text-gray-300 text-sm leading-relaxed">
-              {lang === "en"
-                ? "We engineer enterprise bare-metal solutions in US West data centers (Los Angeles & San Jose). Featuring 12/24-Bay NVMe storage nodes, unmetered 10Gbps connectivity, and dedicated subnet allocations."
-                : "专精美西机房（洛杉矶/圣何塞）12/24 盘位高密度 NVMe 存储型 Bare-Metal 独服。提供 CN2 GIA、联通 9929、移动 CMI 优质优化线路及多 IP 站群方案。"}
+              We engineer custom bare-metal solutions in US West data centers (Los Angeles & San Jose). Offering high-bay NVMe storage nodes, unmetered 10Gbps connectivity, and dedicated IP allocations.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-4 pt-2">
-            {lang === "en" ? (
-              /* PURE ENGLISH BUTTONS ONLY */
-              <>
-                <a
-                  href="https://t.me/your_telegram"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✈️ Telegram Direct Support</span>
-                </a>
-                <a
-                  href="https://thunderserv.com/submitticket.php"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✉️ Submit Enterprise Inquiry</span>
-                </a>
-              </>
-            ) : (
-              /* CHINESE BUTTONS ONLY (Triggered when user clicks language switch) */
-              <>
-                <a
-                  href="https://t.me/your_telegram"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
-                >
-                  <span>✈️ Telegram 咨询</span>
-                </a>
-                <div className="bg-gray-800/80 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl flex items-center space-x-2">
-                  <span>💬 微信 (WeChat): <strong className="text-blue-400">YourWeChatID</strong></span>
-                </div>
-              </>
-            )}
+            <a
+              href="https://t.me/your_telegram"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
+            >
+              <span>✈️ Telegram Support</span>
+            </a>
+            <a
+              href="https://thunderserv.com/submitticket.php"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-5 py-3 rounded-xl transition flex items-center space-x-2"
+            >
+              <span>✉️ Submit Enterprise Inquiry</span>
+            </a>
           </div>
+
+          {/* 只有当用户显式点击切换为中文时，才会在下方增加微信专区 */}
+          {lang === "zh" && (
+            <div className="mt-4 pt-4 border-t border-gray-800 text-xs text-gray-300 flex items-center space-x-2">
+              <span>💬 大中华区专属客服微信 (WeChat): <strong className="text-blue-400">YourWeChatID</strong></span>
+            </div>
+          )}
         </section>
 
         {/* Article SEO Section */}

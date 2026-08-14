@@ -125,10 +125,6 @@ export default function Home() {
               <span>✉️</span>
               <span>sales@thunderserv.com</span>
             </a>
-
-            <span className="text-xs text-gray-500 ml-auto">
-              ⚡ {t("contact.response")}
-            </span>
           </div>
         </div>
       </div>

@@ -84,7 +84,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Search Input */}
+      {/* Search Bar */}
       <div className="mb-8">
         <div className="relative max-w-md">
           <input
@@ -145,6 +145,42 @@ export default function HomePage() {
           {language === "zh" ? "未找到匹配的工具" : "No matching tools found."}
         </div>
       )}
+
+      {/* Enterprise Advisory / Contact Links Section */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-900/90 to-blue-950/40 border border-gray-800 rounded-2xl p-6 mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+              <span>💬</span>
+              <span>
+                {language === "zh" ? "需要定制化服务器架构咨询？" : "Need Infrastructure & Sales Advisory?"}
+              </span>
+            </h3>
+            <p className="text-gray-400 text-xs">
+              {language === "zh"
+                ? "联系 ThunderServ 专职架构师，获取独立服务器、裸金属硬件与大带宽解决方案。"
+                : "Connect with ThunderServ infrastructure experts for custom server deployments."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href="https://t.me/thunderserv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md"
+            >
+              <span>✈️ Telegram: @thunderserv</span>
+            </a>
+            <a
+              href="mailto:admin@thunderserv.com"
+              className="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md"
+            >
+              <span>✉️ admin@thunderserv.com</span>
+            </a>
+          </div>
+        </div>
+      </div>
 
       {/* Footer Branding */}
       <footer className="border-t border-gray-800/60 pt-6 text-center text-xs text-gray-500 font-mono">

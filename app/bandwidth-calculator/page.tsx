@@ -2,10 +2,20 @@
 
 import React, { useState } from "react";
 
+// 快捷端口预设 (Mbps)
+const PORT_PRESETS = [
+  { label: "100 Mbps", value: 0.1 },
+  { label: "1 Gbps", value: 1 },
+  { label: "10 Gbps", value: 10 },
+  { label: "40 Gbps", value: 40 },
+  { label: "100 Gbps", value: 100 },
+  { label: "400 Gbps", value: 400 },
+];
+
 export default function BandwidthCalculator() {
   // 1. 月流量 ↔ 连续带宽 换算
-  const [monthlyTB, setMonthlyTB] = useState<number>(300); // 300 TB/月
-  const [portSpeedGbps, setPortSpeedGbps] = useState<number>(10); // 10 Gbps 口子
+  const [monthlyTB, setMonthlyTB] = useState<number>(300); // 默认 300 TB/月
+  const [portSpeedGbps, setPortSpeedGbps] = useState<number>(10); // 默认 10 Gbps
 
   // 2. 数据传输耗时计算
   const [transferSizeTB, setTransferSizeTB] = useState<number>(50); // 50 TB 数据
@@ -17,8 +27,7 @@ export default function BandwidthCalculator() {
 
   // --- 核心逻辑计算 ---
 
-  // A. 300 TB 月流量换算为 7x24 连续 Mbps
-  // 1 TB = 8,000,000 Megabits; 1月 = 30天 = 720小时 = 2,592,000 秒
+  // A. 月流量换算为 7x24 连续 Mbps
   const calculateTrafficToBandwidth = () => {
     const totalBits = monthlyTB * 8 * 1000 * 1000; // Megabits (Decimal)
     const monthSeconds = 30 * 24 * 3600;
@@ -28,7 +37,7 @@ export default function BandwidthCalculator() {
     const rawMbps = avgMbps * (1 - tcpOverhead / 100);
     const avgMBps = rawMbps / 8;
 
-    // 全速跑满端口耗尽流量的时间 (以 Port Speed 为准)
+    // 全速跑满端口耗尽流量的时间
     const portMbps = portSpeedGbps * 1000;
     const secondsToDeplete = portMbps > 0 ? (monthlyTB * 8 * 1000 * 1000) / portMbps : 0;
     const hoursToDeplete = secondsToDeplete / 3600;
@@ -65,11 +74,11 @@ export default function BandwidthCalculator() {
     const summaryText = `====================================
 BANDWIDTH & TRAFFIC SPECIFICATION
 ====================================
-• Port Capacity: ${portSpeedGbps} Gbps
+• Port Capacity: ${portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`}
 • Monthly Data Allocation: ${monthlyTB} TB / Month
 • 7x24 Continuous Equivalent Bandwidth: ~${trafficRes.avgMbps.toFixed(1)} Mbps
 • Net Transfer Speed (Excl. ${tcpOverhead}% TCP Overhead): ~${trafficRes.avgMBps.toFixed(1)} MB/s
-• Full-Speed Burnout Time (${portSpeedGbps} Gbps continuous): ~${trafficRes.daysToDeplete.toFixed(2)} Days (${trafficRes.hoursToDeplete.toFixed(1)} Hours)
+• Full-Speed Burnout Time (${portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} continuous): ~${trafficRes.daysToDeplete.toFixed(2)} Days (${trafficRes.hoursToDeplete.toFixed(1)} Hours)
 ------------------------------------
 DATA TRANSFER TIME ESTIMATE
 • Data Volume: ${transferSizeTB} TB
@@ -119,9 +128,28 @@ DATA TRANSFER TIME ESTIMATE
 
         {/* 模块 1：月流量 ↔ 连续带宽等效转换 */}
         <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
-          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
-            1. Monthly Data Cap ↔ Continuous Bandwidth Equivalent
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
+              1. Monthly Data Cap ↔ Continuous Bandwidth Equivalent
+            </h2>
+
+            {/* 常用端口快捷选择按钮组 */}
+            <div className="flex flex-wrap gap-1.5">
+              {PORT_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => setPortSpeedGbps(p.value)}
+                  className={`text-xs px-2.5 py-1 rounded-md font-mono font-medium transition border ${
+                    portSpeedGbps === p.value
+                      ? "bg-blue-600 border-blue-500 text-white"
+                      : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
@@ -142,7 +170,7 @@ DATA TRANSFER TIME ESTIMATE
               </label>
               <input
                 type="number"
-                step="0.1"
+                step="0.001"
                 value={portSpeedGbps}
                 onChange={(e) => setPortSpeedGbps(Math.max(0, parseFloat(e.target.value) || 0))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
@@ -192,7 +220,7 @@ DATA TRANSFER TIME ESTIMATE
                 {trafficRes.daysToDeplete.toFixed(2)} Days
               </div>
               <div className="text-[11px] text-gray-500">
-                Running 100% max speed on a {portSpeedGbps} Gbps link (~{trafficRes.hoursToDeplete.toFixed(1)} hrs)
+                Running 100% max speed on a {portSpeedGbps >= 1 ? `${portSpeedGbps} Gbps` : `${portSpeedGbps * 1000} Mbps`} link (~{trafficRes.hoursToDeplete.toFixed(1)} hrs)
               </div>
             </div>
           </div>

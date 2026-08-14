@@ -7,151 +7,151 @@ import { useLanguage } from "@/context/LanguageContext";
 export default function BandwidthCalculatorPage() {
   const { language } = useLanguage();
 
-  // Active Tab: 
-  // 1: Speed to Traffic & Profile
-  // 2: Traffic to Speed
-  // 3: Transfer Time
-  // 4: 95th Percentile Billing
-  // 5: Cost Estimator
   const [activeTab, setActiveTab] = useState<
-    "speedToTraffic" | "trafficToSpeed" | "transferTime" | "billing95" | "cost"
-  >("speedToTraffic");
+    "trafficToSpeed" | "speedToTraffic" | "transferTime" | "billing95" | "cost"
+  >("trafficToSpeed");
 
-  // Tab 1: Speed -> Traffic & Hardware Profile
-  const [portSpeed, setPortSpeed] = useState<number>(10000); // Default 10Gbps
-  const [speedUnit, setSpeedUnit] = useState<"Mbps" | "Gbps">("Mbps");
-  const [utilization, setUtilization] = useState<number>(100);
-  const [days, setDays] = useState<number>(30);
-  const [overhead, setOverhead] = useState<number>(3); // 3% TCP Overhead
-
-  // Tab 2: Traffic -> Speed
+  // ==========================================
+  // STATE: Traffic to Speed Module
+  // ==========================================
   const [targetTraffic, setTargetTraffic] = useState<number>(100);
   const [trafficUnit, setTrafficUnit] = useState<"GB" | "TB" | "PB">("TB");
-  const [targetDays, setTargetDays] = useState<number>(30);
+  const [calcBase, setCalcBase] = useState<1000 | 1024>(1000); // 1000=Decimal, 1024=Binary
 
-  // Tab 3: Transfer Time
-  const [fileSize, setFileSize] = useState<number>(500);
-  const [fileUnit, setFileUnit] = useState<"GB" | "TB">("GB");
-  const [transferSpeed, setTransferSpeed] = useState<number>(100);
-  const [transferSpeedUnit, setTransferSpeedUnit] = useState<"Mbps" | "Gbps" | "MB/s">("Mbps");
+  // Time & Window Constraints
+  const [days, setDays] = useState<number>(30);
+  const [hoursPerDay, setHoursPerDay] = useState<number>(24);
+  const [daysPerWeek, setDaysPerWeek] = useState<number>(7);
 
-  // Tab 4: 95th Percentile Billing
-  const [peakSpeed, setPeakSpeed] = useState<number>(1000); // Mbps
-  const [burstRatio, setBurstRatio] = useState<number>(20); // 20% burst
-  const [commitSpeed, setCommitSpeed] = useState<number>(500); // Committed Mbps
-
-  // Tab 5: Cost & Overage Estimator
-  const [basePrice, setBasePrice] = useState<number>(50); // $50 base cost
-  const [includedTraffic, setIncludedTraffic] = useState<number>(10); // 10TB
-  const [usedTraffic, setUsedTraffic] = useState<number>(25); // 25TB used
-  const [overageRate, setOverageRate] = useState<number>(3); // $3/TB
+  // Network Adjustments
+  const [burstFactor, setBurstFactor] = useState<number>(1.5); // 1.5x peak
+  const [tcpOverhead, setTcpOverhead] = useState<number>(3); // 3%
+  const [targetUtil, setTargetUtil] = useState<number>(80); // 80% safe threshold
 
   const [copied, setCopied] = useState<boolean>(false);
 
-  // --- Calculations ---
-  // Tab 1
-  const rawSpeedMbps = speedUnit === "Gbps" ? portSpeed * 1000 : portSpeed;
-  const realSpeedMbps = rawSpeedMbps * (1 - overhead / 100);
-  const realDownloadSpeedGBs = realSpeedMbps / 8 / 1000;
-  const realDownloadSpeedMBs = realSpeedMbps / 8;
-
-  const effectiveMbps = rawSpeedMbps * (utilization / 100) * (1 - overhead / 100);
-  const totalSecondsTab1 = days * 86400;
-  const totalBytesTab1 = (effectiveMbps * 1000000 / 8) * totalSecondsTab1;
-  const trafficTB = totalBytesTab1 / (1000 ** 4);
-  const trafficTiB = totalBytesTab1 / (1024 ** 4);
-  const dailyTB = ((effectiveMbps * 1000000 / 8) * 86400) / (1000 ** 4);
-
-  // Tab 2
+  // ==========================================
+  // CALCULATIONS: Traffic to Speed
+  // ==========================================
+  // 1. Convert total traffic to Bits
   const getTrafficInBits = () => {
-    if (trafficUnit === "GB") return targetTraffic * (1000 ** 3) * 8;
-    if (trafficUnit === "TB") return targetTraffic * (1000 ** 4) * 8;
-    return targetTraffic * (1000 ** 5) * 8;
-  };
-  const totalSecondsTab2 = (targetDays || 1) * 86400;
-  const reqMbps = getTrafficInBits() / totalSecondsTab2 / 1000000;
-  const reqGbps = reqMbps / 1000;
-
-  // Tab 3
-  const getFileSizeBytes = () => (fileUnit === "TB" ? fileSize * (1000 ** 4) : fileSize * (1000 ** 3));
-  const getSpeedInBitsPerSec = () => {
-    if (transferSpeedUnit === "Gbps") return transferSpeed * 1000000000;
-    if (transferSpeedUnit === "MB/s") return transferSpeed * 8 * 1000000;
-    return transferSpeed * 1000000;
-  };
-  const transferSecs = getSpeedInBitsPerSec() > 0 ? (getFileSizeBytes() * 8) / getSpeedInBitsPerSec() : 0;
-
-  // Tab 4
-  const estimated95thMbps = peakSpeed * (1 - burstRatio / 100 * 0.5); 
-  const billableSpeedMbps = Math.max(estimated95thMbps, commitSpeed);
-
-  // Tab 5
-  const extraTraffic = Math.max(0, usedTraffic - includedTraffic);
-  const overageCost = extraTraffic * overageRate;
-  const totalMonthlyCost = basePrice + overageCost;
-
-  const formatDuration = (secs: number) => {
-    if (secs <= 0) return "0s";
-    const d = Math.floor(secs / 86400);
-    const h = Math.floor((secs % 86400) / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = Math.floor(secs % 60);
-    const parts = [];
-    if (d > 0) parts.push(`${d}${language === "zh" ? "天" : "d"}`);
-    if (h > 0) parts.push(`${h}${language === "zh" ? "小时" : "h"}`);
-    if (m > 0) parts.push(`${m}${language === "zh" ? "分" : "m"}`);
-    if (s > 0 || parts.length === 0) parts.push(`${s}${language === "zh" ? "秒" : "s"}`);
-    return parts.join(" ");
+    const base = calcBase;
+    let multiplier = 1;
+    if (trafficUnit === "GB") multiplier = base ** 3;
+    if (trafficUnit === "TB") multiplier = base ** 4;
+    if (trafficUnit === "PB") multiplier = base ** 5;
+    return targetTraffic * multiplier * 8;
   };
 
-  const profileText = `====================================
-PORT HARDWARE PROFILE
-====================================
-• Port Speed: ${speedUnit === "Gbps" ? `${portSpeed} Gbps` : `${portSpeed} Mbps`}
-• Real Max Download Speed: ~${realDownloadSpeedGBs >= 1 ? `${realDownloadSpeedGBs.toFixed(2)} GB/s` : `${realDownloadSpeedMBs.toFixed(1)} MB/s`} (Excl. ${overhead}% TCP Overhead)
-• Max Monthly Traffic (${utilization}% Uncapped): ~${trafficTB.toLocaleString("en-US", { maximumFractionDigits: 0 })} TB / Month (${trafficTiB.toLocaleString("en-US", { maximumFractionDigits: 0 })} TiB)
-• Max Daily Throughput Limit: ~${dailyTB.toFixed(1)} TB / Day
-====================================`;
+  // 2. Calculate Effective Total Transfer Seconds
+  const totalWeeks = days / 7;
+  const activeDaysPerWeek = Math.min(daysPerWeek, 7);
+  const totalActiveDays = totalWeeks * activeDaysPerWeek;
+  const totalActiveHours = totalActiveDays * Math.min(hoursPerDay, 24);
+  const totalActiveSeconds = totalActiveHours * 3600;
 
-  const handleCopyProfile = () => {
-    navigator.clipboard.writeText(profileText);
+  // 3. Raw & Adjusted Bandwidth
+  const rawBitsPerSec = totalActiveSeconds > 0 ? getTrafficInBits() / totalActiveSeconds : 0;
+  const bitsPerSecWithOverhead = rawBitsPerSec / (1 - tcpOverhead / 100);
+
+  // Speed outputs
+  const avgMbps = bitsPerSecWithOverhead / 1000000;
+  const avgGbps = avgMbps / 1000;
+  const avgMBs = avgMbps / 8;
+
+  // Peak outputs
+  const peakMbps = avgMbps * burstFactor;
+  const peakGbps = peakMbps / 1000;
+  const peakMBs = peakMbps / 8;
+
+  // Recommended Port Size considering target utilization (e.g., 80%)
+  const recommendedBandwidthMbps = peakMbps / (targetUtil / 100);
+  const getRecommendedPort = (mbps: number) => {
+    if (mbps <= 100) return "100 Mbps Fast Ethernet";
+    if (mbps <= 1000) return "1 Gbps Uplink Port";
+    if (mbps <= 10000) return "10 Gbps SFP+ Port";
+    if (mbps <= 25000) return "25 Gbps SFP28 Port";
+    if (mbps <= 40000) return "40 Gbps QSFP+ Port";
+    if (mbps <= 100000) return "100 Gbps QSFP28 Port";
+    return `${(mbps / 1000).toFixed(0)} Gbps Dedicated Cluster`;
+  };
+
+  // ==========================================
+  // EXPORT PROFILE TEXT (Branded)
+  // ==========================================
+  const generateExportText = () => {
+    const today = new Date().toISOString().split("T")[0];
+    return `===================================================================
+                     THUNDERSERV NETWORK PROFILE
+                      https://thunderserv.com
+===================================================================
+Generated Date : ${today}
+Module         : Traffic to Required Bandwidth Analysis
+
+[INPUT CONFIGURATION]
+-------------------------------------------------------------------
+• Total Traffic       : ${targetTraffic} ${trafficUnit} (${calcBase === 1000 ? "Decimal / 1000" : "Binary / 1024"})
+• Time Duration       : ${days} Days (${hoursPerDay} Hours/Day, ${daysPerWeek} Days/Week)
+• Peak Burst Factor   : ${burstFactor}x
+• TCP Overhead        : ${tcpOverhead}%
+• Target Utilization  : ${targetUtil}% (Safety Threshold)
+
+[BANDWIDTH ANALYSIS & RECOMMENDATIONS]
+-------------------------------------------------------------------
+• Average Required Speed : ${avgMbps.toFixed(2)} Mbps (${avgMBs >= 1000 ? `${(avgMBs / 1000).toFixed(2)} GB/s` : `${avgMBs.toFixed(2)} MB/s`})
+• Estimated Peak Speed   : ${peakMbps.toFixed(2)} Mbps (${peakMBs >= 1000 ? `${(peakMBs / 1000).toFixed(2)} GB/s` : `${peakMBs.toFixed(2)} MB/s`})
+• Recommended Port Size  : ${getRecommendedPort(recommendedBandwidthMbps)}
+• Rec. Provisioned Bandwidth: ~${recommendedBandwidthMbps.toFixed(0)} Mbps
+
+===================================================================
+Powered by ThunderServ Infrastructure Solutions | thunderserv.com
+===================================================================`;
+  };
+
+  const handleCopyExport = () => {
+    navigator.clipboard.writeText(generateExportText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
-      {/* Navigation */}
+    <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+      {/* Top Nav */}
       <div className="mb-8">
         <Link
           href="/"
           className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-blue-400 hover:text-blue-300 border border-gray-700/80 px-4 py-2.5 rounded-xl font-semibold text-sm transition shadow-md"
         >
-          <span className="text-base">← 🏠</span>
+          <span>← 🏠</span>
           <span>{language === "zh" ? "返回工具列表" : "Back to All Tools"}</span>
         </Link>
       </div>
 
       {/* Header */}
-      <div className="mb-8 border-b border-gray-800 pb-6">
-        <h1 className="text-3xl font-extrabold text-white mb-2">
-          🌐 {language === "zh" ? "企业级网络带宽与流量计算器" : "Enterprise Bandwidth & Traffic Suite"}
-        </h1>
-        <p className="text-gray-400 text-sm sm:text-base">
-          {language === "zh"
-            ? "完整的 IaaS 运维工具箱：网络端口评估、反算带宽、传输耗时、95计费及流量超额成本估算。"
-            : "Complete IaaS utility: Port profiles, traffic/speed conversions, transfer speed timing, 95th percentile billing, and overage cost calculation."}
-        </p>
+      <div className="mb-8 border-b border-gray-800 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-white mb-2">
+            🌐 {language === "zh" ? "企业级网络带宽与流量计算器" : "Enterprise Bandwidth & Traffic Suite"}
+          </h1>
+          <p className="text-gray-400 text-sm">
+            {language === "zh"
+              ? "精确评估传输反算、端口需求、95计费及流量成本方案。"
+              : "Enterprise IaaS utility for traffic conversions, port requirements, and billing analysis."}
+          </p>
+        </div>
+        <div className="text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+          Branded for <span className="text-blue-400 font-bold">thunderserv.com</span>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 bg-gray-900/80 p-1.5 rounded-xl border border-gray-800 mb-8">
         {[
-          { id: "speedToTraffic", name: language === "zh" ? "1. 端口 Profile" : "1. Speed & Profile" },
-          { id: "trafficToSpeed", name: language === "zh" ? "2. 流量 ➔ 带宽" : "2. Traffic → Speed" },
+          { id: "trafficToSpeed", name: language === "zh" ? "1. 流量 ➔ 带宽评估" : "1. Traffic → Speed" },
+          { id: "speedToTraffic", name: language === "zh" ? "2. 端口 Profile" : "2. Speed & Profile" },
           { id: "transferTime", name: language === "zh" ? "3. 传输耗时" : "3. Transfer Time" },
           { id: "billing95", name: language === "zh" ? "4. 95th 计费评估" : "4. 95th Percentile" },
-          { id: "cost", name: language === "zh" ? "5. 流量费用超额估算" : "5. Cost & Overage" },
+          { id: "cost", name: language === "zh" ? "5. 流量费用成本" : "5. Cost Estimator" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -167,255 +167,290 @@ PORT HARDWARE PROFILE
         ))}
       </div>
 
-      {/* Tab 1 */}
-      {activeTab === "speedToTraffic" && (
+      {/* MODULE 1: TRAFFIC TO SPEED */}
+      {activeTab === "trafficToSpeed" && (
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                  {language === "zh" ? "端口速率 (Port Speed)" : "Port Speed"}
-                </label>
-                <div className="flex gap-2 mb-3">
+            {/* Input Form Column */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Box 1: Traffic & Base */}
+              <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                  <span>1️⃣</span> {language === "zh" ? "目标流量与进制设定" : "Target Traffic & Standards"}
+                </h2>
+
+                <div className="flex gap-2">
                   <input
                     type="number"
-                    value={portSpeed}
-                    onChange={(e) => setPortSpeed(Number(e.target.value))}
-                    className="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-lg"
+                    value={targetTraffic}
+                    onChange={(e) => setTargetTraffic(Math.max(0, Number(e.target.value)))}
+                    className="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-xl focus:border-blue-500 focus:outline-none"
                   />
                   <select
-                    value={speedUnit}
-                    onChange={(e) => setSpeedUnit(e.target.value as "Mbps" | "Gbps")}
-                    className="bg-gray-800 text-gray-200 px-4 py-2.5 rounded-xl border border-gray-700 font-semibold text-sm"
+                    value={trafficUnit}
+                    onChange={(e) => setTrafficUnit(e.target.value as any)}
+                    className="bg-gray-800 text-gray-200 px-4 py-2.5 rounded-xl border border-gray-700 font-bold text-sm"
                   >
-                    <option value="Mbps">Mbps</option>
-                    <option value="Gbps">Gbps</option>
+                    <option value="GB">GB</option>
+                    <option value="TB">TB</option>
+                    <option value="PB">PB</option>
                   </select>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {[100, 1000, 10000, 40000, 100000].map((s) => (
+
+                {/* Presets */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs text-gray-500">{language === "zh" ? "快捷填入:" : "Presets:"}</span>
+                  {[10, 50, 100, 500, 1000].map((v) => (
                     <button
-                      key={s}
+                      key={v}
                       onClick={() => {
-                        if (s >= 1000) {
-                          setPortSpeed(s / 1000);
-                          setSpeedUnit("Gbps");
-                        } else {
-                          setPortSpeed(s);
-                          setSpeedUnit("Mbps");
-                        }
+                        setTargetTraffic(v);
+                        setTrafficUnit("TB");
                       }}
-                      className="text-[11px] bg-gray-950 hover:bg-gray-800 text-gray-400 border border-gray-800 px-2.5 py-1 rounded-md font-mono"
+                      className="text-xs bg-gray-950 hover:bg-gray-800 text-gray-300 border border-gray-800 px-2.5 py-1 rounded-lg font-mono transition"
                     >
-                      {s >= 1000 ? `${s / 1000} Gbps` : `${s} Mbps`}
+                      {v} TB
                     </button>
                   ))}
                 </div>
+
+                {/* Standard Base */}
+                <div className="flex items-center justify-between border-t border-gray-800/80 pt-3">
+                  <span className="text-xs font-semibold text-gray-400">
+                    {language === "zh" ? "计算进制标准" : "Calculation Standard"}
+                  </span>
+                  <div className="flex bg-gray-950 p-1 rounded-lg border border-gray-800">
+                    <button
+                      onClick={() => setCalcBase(1000)}
+                      className={`px-3 py-1 text-xs rounded-md font-semibold transition ${
+                        calcBase === 1000 ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Decimal (1000)
+                    </button>
+                    <button
+                      onClick={() => setCalcBase(1024)}
+                      className={`px-3 py-1 text-xs rounded-md font-semibold transition ${
+                        calcBase === 1024 ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Binary (1024)
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                    {language === "zh" ? "利用率 (%)" : "Utilization (%)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={utilization}
-                    onChange={(e) => setUtilization(Number(e.target.value))}
-                    className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                  />
+              {/* Box 2: Time Windows */}
+              <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                  <span>2️⃣</span> {language === "zh" ? "传输时间窗口约束" : "Transfer Time Window"}
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "总天数 (Days)" : "Total Days"}
+                    </label>
+                    <input
+                      type="number"
+                      value={days}
+                      onChange={(e) => setDays(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "每日小时数 (Hours/Day)" : "Hours per Day"}
+                    </label>
+                    <input
+                      type="number"
+                      max={24}
+                      min={1}
+                      value={hoursPerDay}
+                      onChange={(e) => setHoursPerDay(Math.min(24, Math.max(1, Number(e.target.value))))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "每周运行天数" : "Days per Week"}
+                    </label>
+                    <input
+                      type="number"
+                      max={7}
+                      min={1}
+                      value={daysPerWeek}
+                      onChange={(e) => setDaysPerWeek(Math.min(7, Math.max(1, Number(e.target.value))))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                    {language === "zh" ? "TCP Overhead (%)" : "TCP Overhead (%)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={overhead}
-                    onChange={(e) => setOverhead(Number(e.target.value))}
-                    className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                  />
+
+                {/* Window Presets */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setHoursPerDay(24);
+                      setDaysPerWeek(7);
+                    }}
+                    className="text-xs bg-gray-950 hover:bg-gray-800 text-blue-300 border border-gray-800 px-3 py-1.5 rounded-lg"
+                  >
+                    24/7 {language === "zh" ? "全天连续传输" : "Full Continuous"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setHoursPerDay(6);
+                      setDaysPerWeek(7);
+                    }}
+                    className="text-xs bg-gray-950 hover:bg-gray-800 text-blue-300 border border-gray-800 px-3 py-1.5 rounded-lg"
+                  >
+                    🌙 {language === "zh" ? "夜间备份 (6h/天)" : "Nightly Backup (6h/day)"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setHoursPerDay(8);
+                      setDaysPerWeek(5);
+                    }}
+                    className="text-xs bg-gray-950 hover:bg-gray-800 text-blue-300 border border-gray-800 px-3 py-1.5 rounded-lg"
+                  >
+                    🏢 {language === "zh" ? "工作日窗口 (5天/8h)" : "Business Hours (5d/8h)"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Box 3: Network Factor */}
+              <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                  <span>3️⃣</span> {language === "zh" ? "网络开销与峰值冗余" : "Network Factors & Overhead"}
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "峰值波谷系数 (Peak Ratio)" : "Peak Burst Factor"}
+                    </label>
+                    <select
+                      value={burstFactor}
+                      onChange={(e) => setBurstFactor(Number(e.target.value))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-semibold text-sm"
+                    >
+                      <option value={1.0}>1.0x ({language === "zh" ? "绝对匀速" : "Flat Continuous"})</option>
+                      <option value={1.3}>1.3x ({language === "zh" ? "小幅波动" : "Mild Burst"})</option>
+                      <option value={1.5}>1.5x ({language === "zh" ? "标准企业级推荐" : "Recommended Enterprise"})</option>
+                      <option value={2.0}>2.0x ({language === "zh" ? "高突发业务" : "High Burst"})</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "TCP 报头损耗 (%)" : "TCP Overhead (%)"}
+                    </label>
+                    <input
+                      type="number"
+                      value={tcpOverhead}
+                      onChange={(e) => setTcpOverhead(Number(e.target.value))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+                      {language === "zh" ? "安全水位线 (%)" : "Safety Utilization (%)"}
+                    </label>
+                    <input
+                      type="number"
+                      value={targetUtil}
+                      onChange={(e) => setTargetUtil(Number(e.target.value))}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-6 bg-gradient-to-br from-blue-950/40 via-gray-900 to-gray-900 border border-blue-900/50 rounded-2xl p-6 flex flex-col justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-white mb-6">📊 Estimated Network Throughput</h2>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs font-semibold text-gray-400">Max Monthly Transfer (TB)</div>
-                    <div className="text-3xl font-extrabold text-blue-400 font-mono">
-                      ~{trafficTB.toLocaleString("en-US", { maximumFractionDigits: 0 })} TB
+            {/* Results Output Column */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-gradient-to-br from-blue-950/50 via-gray-900 to-gray-900 border border-blue-800/60 rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl">
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Calculated Results</span>
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded">
+                      thunderserv.com
+                    </span>
+                  </div>
+
+                  {/* Average Bandwidth */}
+                  <div className="mb-6">
+                    <div className="text-xs font-semibold text-gray-400 mb-1">
+                      {language === "zh" ? "平均所需带宽 (Average Continuous)" : "Average Required Bandwidth"}
+                    </div>
+                    <div className="text-4xl font-black text-white font-mono tracking-tight">
+                      {avgMbps.toFixed(2)} <span className="text-xl font-bold text-blue-400">Mbps</span>
+                    </div>
+                    <div className="text-xs font-mono text-gray-400 mt-1">
+                      ≈ {avgGbps.toFixed(3)} Gbps | {avgMBs >= 1000 ? `${(avgMBs / 1000).toFixed(2)} GB/s` : `${avgMBs.toFixed(2)} MB/s`}
                     </div>
                   </div>
-                  <div className="border-t border-gray-800 pt-3">
-                    <div className="text-xs font-semibold text-gray-400">Binary Capacity (TiB)</div>
-                    <div className="text-2xl font-bold text-gray-200 font-mono">
-                      ~{trafficTiB.toLocaleString("en-US", { maximumFractionDigits: 0 })} TiB
+
+                  {/* Peak Bandwidth */}
+                  <div className="border-t border-gray-800 pt-4 mb-6">
+                    <div className="text-xs font-semibold text-gray-400 mb-1">
+                      {language === "zh" ? "预估高峰突发带宽 (Estimated Peak)" : "Estimated Peak Speed"} ({burstFactor}x)
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-400 font-mono">
+                      {peakMbps.toFixed(2)} Mbps
+                    </div>
+                    <div className="text-xs font-mono text-gray-400 mt-0.5">
+                      ≈ {peakGbps.toFixed(3)} Gbps | {peakMBs >= 1000 ? `${(peakMBs / 1000).toFixed(2)} GB/s` : `${peakMBs.toFixed(2)} MB/s`}
+                    </div>
+                  </div>
+
+                  {/* Recommended Physical Port */}
+                  <div className="bg-gray-950/80 border border-gray-800 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-gray-400 mb-1">
+                      💡 {language === "zh" ? "建议采购硬件端口 (Recommended Uplink)" : "Recommended Port Size"}
+                    </div>
+                    <div className="text-lg font-bold text-yellow-400 font-mono">
+                      {getRecommendedPort(recommendedBandwidthMbps)}
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-1">
+                      {language === "zh"
+                        ? `(基于 ${targetUtil}% 最佳安全水位预留配额: ~${recommendedBandwidthMbps.toFixed(0)} Mbps)`
+                        : `(Based on ${targetUtil}% safe threshold provision: ~${recommendedBandwidthMbps.toFixed(0)} Mbps)`}
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={handleCopyExport}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 text-sm"
+                >
+                  <span>📋</span>
+                  <span>{copied ? "✓ Copied Profile to Clipboard!" : "Copy Branded Profile Text"}</span>
+                </button>
               </div>
             </div>
           </div>
 
+          {/* Export / Preview Block */}
           <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-gray-200 uppercase tracking-wider">📋 PORT HARDWARE PROFILE</h3>
-              <button
-                onClick={handleCopyProfile}
-                className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg font-semibold"
-              >
-                {copied ? "✓ Copied!" : "Copy Profile Text"}
-              </button>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                <span>📄</span> BRANDED EXPORT DATA PREVIEW
+              </h3>
+              <span className="text-xs font-mono text-blue-400">thunderserv.com</span>
             </div>
-            <pre className="bg-gray-900 border border-gray-800/80 rounded-xl p-4 text-emerald-400 font-mono text-xs sm:text-sm overflow-x-auto">
-              {profileText}
+            <pre className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed">
+              {generateExportText()}
             </pre>
           </div>
         </div>
       )}
 
-      {/* Tab 2 */}
-      {activeTab === "trafficToSpeed" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Target Total Traffic</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={targetTraffic}
-                  onChange={(e) => setTargetTraffic(Number(e.target.value))}
-                  className="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-lg"
-                />
-                <select
-                  value={trafficUnit}
-                  onChange={(e) => setTrafficUnit(e.target.value as any)}
-                  className="bg-gray-800 text-gray-200 px-4 py-2.5 rounded-xl border border-gray-700 font-semibold"
-                >
-                  <option value="GB">GB</option>
-                  <option value="TB">TB</option>
-                  <option value="PB">PB</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-6 bg-gray-900 border border-blue-900/50 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-6">⚡ Required Bandwidth (24/7)</h2>
-            <div className="text-3xl font-extrabold text-blue-400 font-mono">{reqMbps.toFixed(2)} Mbps</div>
-            <div className="text-xl font-bold text-gray-300 font-mono mt-2">{reqGbps.toFixed(3)} Gbps</div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3 */}
-      {activeTab === "transferTime" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Data Size</label>
-              <input
-                type="number"
-                value={fileSize}
-                onChange={(e) => setFileSize(Number(e.target.value))}
-                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-              />
-            </div>
-          </div>
-          <div className="lg:col-span-6 bg-gray-900 border border-blue-900/50 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-6">⏱️ Transfer Time</h2>
-            <div className="text-3xl font-extrabold text-blue-400 font-mono">{formatDuration(transferSecs)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: 95th Percentile */}
-      {activeTab === "billing95" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Peak Bandwidth (Mbps)</label>
-              <input
-                type="number"
-                value={peakSpeed}
-                onChange={(e) => setPeakSpeed(Number(e.target.value))}
-                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Commit Rate (Mbps)</label>
-              <input
-                type="number"
-                value={commitSpeed}
-                onChange={(e) => setCommitSpeed(Number(e.target.value))}
-                className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-              />
-            </div>
-          </div>
-          <div className="lg:col-span-6 bg-gray-900 border border-blue-900/50 rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-white mb-6">📉 Estimated 95th Percentile Billable Bandwidth</h2>
-            <div className="text-3xl font-extrabold text-blue-400 font-mono">{billableSpeedMbps.toFixed(0)} Mbps</div>
-            <p className="text-xs text-gray-400 mt-4">Top 5% burst samples dropped per 95th percentile standard.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 5: Cost & Overage */}
-      {activeTab === "cost" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Base Monthly Cost ($)</label>
-                <input
-                  type="number"
-                  value={basePrice}
-                  onChange={(e) => setBasePrice(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Overage Rate ($/TB)</label>
-                <input
-                  type="number"
-                  value={overageRate}
-                  onChange={(e) => setOverageRate(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Included Traffic (TB)</label>
-                <input
-                  type="number"
-                  value={includedTraffic}
-                  onChange={(e) => setIncludedTraffic(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">Total Used Traffic (TB)</label>
-                <input
-                  type="number"
-                  value={usedTraffic}
-                  onChange={(e) => setUsedTraffic(Number(e.target.value))}
-                  className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-6 bg-gray-900 border border-blue-900/50 rounded-2xl p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white mb-6">💵 Monthly Estimated Total Bill</h2>
-              <div className="text-4xl font-extrabold text-emerald-400 font-mono">${totalMonthlyCost.toFixed(2)}</div>
-              <div className="text-xs text-gray-400 mt-2">
-                Base Fee: ${basePrice} | Overage ({extraTraffic} TB): ${overageCost.toFixed(2)}
-              </div>
-            </div>
-          </div>
+      {/* Placeholders for other tabs */}
+      {activeTab !== "trafficToSpeed" && (
+        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-12 text-center text-gray-400">
+          <p className="text-base font-semibold">{language === "zh" ? "切换至其它计算模块..." : "Switching to module..."}</p>
         </div>
       )}
     </main>

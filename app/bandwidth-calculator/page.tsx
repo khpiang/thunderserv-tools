@@ -85,4 +85,3 @@ export default function BandwidthCalculator() {
     </div>
   );
 }
-'@ | Set-Content -Path app\bandwidth-calculator\page.tsx -Encoding UTF8

@@ -8,18 +8,18 @@ export default function BandwidthCalculatorPage() {
   const { t, language } = useLanguage();
 
   const [mode, setMode] = useState<"bandwidth" | "transfer">("bandwidth");
-  
-  // Mode 1 State
+
+  // Mode 1: Bandwidth -> Traffic
   const [portSpeed, setPortSpeed] = useState<number>(1000); // Mbps
   const [speedUnit, setSpeedUnit] = useState<"Mbps" | "Gbps">("Mbps");
   const [utilization, setUtilization] = useState<number>(100); // %
   const [timePreset, setTimePreset] = useState<string>("30"); // days
   const [customDays, setCustomDays] = useState<number>(30);
 
-  // Mode 2 State
-  const [fileSize, setFileSize] = useState<number>(100); // GB
-  const [fileUnit, setFileUnit] = useState<"GB" | "TB">("GB");
-  const [speed, setSpeed] = useState<number>(100); // Mbps
+  // Mode 2: Traffic -> Required Bandwidth
+  const [targetData, setTargetData] = useState<number>(100);
+  const [targetDataUnit, setTargetDataUnit] = useState<"GB" | "TB">("TB");
+  const [targetDays, setTargetDays] = useState<number>(30);
 
   const getDays = () => {
     if (timePreset === "1") return 1;
@@ -28,7 +28,7 @@ export default function BandwidthCalculatorPage() {
     return customDays || 1;
   };
 
-  // Calculation Mode 1
+  // Calculation Mode 1 (Speed to Traffic)
   const days = getDays();
   const totalSeconds = days * 86400;
   const speedInMbps = speedUnit === "Gbps" ? portSpeed * 1000 : portSpeed;
@@ -37,23 +37,15 @@ export default function BandwidthCalculatorPage() {
   const totalDataTB = totalDataBytes / (1000 ** 4);
   const totalDataTiB = totalDataBytes / (1024 ** 4);
 
-  // Calculation Mode 2
-  const fileSizeInBytes = fileUnit === "TB" ? fileSize * (1000 ** 4) : fileSize * (1000 ** 3);
-  const transferSeconds = speed > 0 ? (fileSizeInBytes * 8) / (speed * 1000000) : 0;
-  
-  const formatTime = (secs: number) => {
-    if (secs <= 0) return "0s";
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = Math.floor(secs % 60);
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
+  // Calculation Mode 2 (Traffic to Required Bandwidth)
+  const dataInBits = (targetDataUnit === "TB" ? targetData * (1000 ** 4) : targetData * (1000 ** 3)) * 8;
+  const targetSeconds = (targetDays || 1) * 86400;
+  const requiredMbps = targetSeconds > 0 ? dataInBits / targetSeconds / 1000000 : 0;
+  const requiredGbps = requiredMbps / 1000;
 
   return (
     <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
-      {/* 强目醒目的返回首页按钮 */}
+      {/* 显眼清晰的返回按钮 */}
       <div className="mb-8">
         <Link
           href="/"
@@ -64,7 +56,7 @@ export default function BandwidthCalculatorPage() {
         </Link>
       </div>
 
-      {/* 页面标题 */}
+      {/* 标题 */}
       <div className="mb-8 border-b border-gray-800 pb-6">
         <h1 className="text-3xl font-extrabold text-white mb-2">
           {t("calc.title")}
@@ -74,7 +66,7 @@ export default function BandwidthCalculatorPage() {
         </p>
       </div>
 
-      {/* 模式切换 Tabs */}
+      {/* 模式选择 */}
       <div className="flex bg-gray-900 p-1 rounded-xl border border-gray-800 max-w-md mb-8">
         <button
           onClick={() => setMode("bandwidth")}
@@ -98,7 +90,7 @@ export default function BandwidthCalculatorPage() {
         </button>
       </div>
 
-      {/* Mode 1: 带宽与流量换算 */}
+      {/* Mode 1: 带宽算总流量 */}
       {mode === "bandwidth" ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
@@ -212,7 +204,7 @@ export default function BandwidthCalculatorPage() {
           </div>
         </div>
       ) : (
-        /* Mode 2: 传输时间计算 */
+        /* Mode 2: 按流量与时间反算所需带宽 */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
             <div>
@@ -222,13 +214,13 @@ export default function BandwidthCalculatorPage() {
               <div className="flex gap-2">
                 <input
                   type="number"
-                  value={fileSize}
-                  onChange={(e) => setFileSize(Number(e.target.value))}
+                  value={targetData}
+                  onChange={(e) => setTargetData(Number(e.target.value))}
                   className="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 font-mono"
                 />
                 <select
-                  value={fileUnit}
-                  onChange={(e) => setFileUnit(e.target.value as "GB" | "TB")}
+                  value={targetDataUnit}
+                  onChange={(e) => setTargetDataUnit(e.target.value as "GB" | "TB")}
                   className="bg-gray-800 text-gray-200 px-3 py-2.5 rounded-xl border border-gray-700 font-semibold text-sm focus:outline-none"
                 >
                   <option value="GB">GB</option>
@@ -239,12 +231,12 @@ export default function BandwidthCalculatorPage() {
 
             <div>
               <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                {t("label.speed")} (Mbps)
+                {t("label.duration")} ({t("label.days")})
               </label>
               <input
                 type="number"
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
+                value={targetDays}
+                onChange={(e) => setTargetDays(Number(e.target.value))}
                 className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
@@ -253,15 +245,32 @@ export default function BandwidthCalculatorPage() {
           <div className="bg-gradient-to-br from-blue-950/40 via-gray-900 to-gray-900 border border-blue-900/50 rounded-2xl p-6 flex flex-col justify-between">
             <div>
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <span>⏱️</span> {t("result.estTime")}
+                <span>⚡</span> {t("result.avgBandwidth")}
               </h2>
 
-              <div className="text-3xl sm:text-4xl font-extrabold text-blue-400 font-mono mb-2">
-                {formatTime(transferSeconds)}
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                    Megabits Per Second (Mbps)
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-blue-400 font-mono">
+                    {requiredMbps.toFixed(2)} <span className="text-xl text-blue-300">Mbps</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-800 pt-4">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                    Gigabits Per Second (Gbps)
+                  </div>
+                  <div className="text-2xl font-bold text-gray-200 font-mono">
+                    {requiredGbps.toFixed(3)} <span className="text-base text-gray-400">Gbps</span>
+                  </div>
+                </div>
               </div>
-              <div className="text-xs text-gray-400">
-                Total duration: {Math.round(transferSeconds)} seconds
-              </div>
+            </div>
+
+            <div className="mt-8 text-xs text-gray-500 border-t border-gray-800/80 pt-4">
+              Constant 24/7 continuous transfer rate required for {targetData} {targetDataUnit} in {targetDays} day(s).
             </div>
           </div>
         </div>

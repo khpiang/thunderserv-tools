@@ -76,4 +76,4 @@ export default function SubnetCalculator() {
     </div>
   );
 }
-'@ | Set-Content -Path app\subnet-calculator\page.tsx -Encoding UTF8
+

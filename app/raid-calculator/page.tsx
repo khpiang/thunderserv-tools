@@ -1,347 +1,309 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
-// 预设硬盘性能参数 (Read IOPS, Write IOPS, Throughput MB/s)
-const DRIVE_PRESETS: Record<string, { label: string; rIops: number; wIops: number; speedMB: number }> = {
-  nvme_gen4: { label: "Enterprise Gen4 NVMe SSD (U.2/U.3)", rIops: 800000, wIops: 200000, speedMB: 7000 },
-  sata_ssd: { label: "Enterprise SATA SSD", rIops: 95000, wIops: 60000, speedMB: 550 },
-  sas_15k: { label: "15K Enterprise SAS HDD", rIops: 210, wIops: 210, speedMB: 250 },
-  sata_7k: { label: "7.2K Enterprise SATA HDD", rIops: 80, wIops: 80, speedMB: 200 },
-  custom: { label: "Custom Performance", rIops: 100000, wIops: 50000, speedMB: 500 },
-};
+export default function RaidCalculatorPage() {
+  const { language } = useLanguage();
 
-export default function RaidCalculator() {
-  // 基础阵列配置
+  // Inputs
   const [driveCount, setDriveCount] = useState<number>(8);
-  const [driveCapacityTB, setDriveCapacityTB] = useState<number>(3.84);
-  const [raidType, setRaidType] = useState<string>("raid10");
-  const [drivePrice, setDrivePrice] = useState<number>(350);
-
-  // 高级配置：硬盘性能 & 损耗
-  const [presetKey, setPresetKey] = useState<string>("nvme_gen4");
-  const [customReadIops, setCustomReadIops] = useState<number>(800000);
-  const [customWriteIops, setCustomWriteIops] = useState<number>(200000);
-  const [readRatio, setReadRatio] = useState<number>(70); // 70% Read / 30% Write
-  const [fsOverhead, setFsOverhead] = useState<number>(5); // 5% 文件系统预留
+  const [driveSize, setDriveSize] = useState<number>(18); // TB
+  const [sizeUnit, setSizeUnit] = useState<"TB" | "GB">("TB");
+  const [raidType, setRaidType] = useState<"RAID0" | "RAID1" | "RAID5" | "RAID6" | "RAID10" | "RAID50" | "RAID60">("RAID10");
+  const [hotSpares, setHotSpares] = useState<number>(0);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // 硬盘类型切换处理
-  const handlePresetChange = (key: string) => {
-    setPresetKey(key);
-    if (key !== "custom") {
-      setCustomReadIops(DRIVE_PRESETS[key].rIops);
-      setCustomWriteIops(DRIVE_PRESETS[key].wIops);
-    }
-  };
+  // Raw drive size in TB
+  const sizeInTB = sizeUnit === "GB" ? driveSize / 1000 : driveSize;
+  const activeDrives = Math.max(0, driveCount - hotSpares);
 
-  // 计算容量逻辑
-  const calculateCapacity = () => {
-    const rawTB = driveCount * driveCapacityTB;
+  // Calculations
+  const calculateRaid = () => {
+    if (activeDrives <= 0) return { raw: 0, usableDecimal: 0, usableBinary: 0, faultTolerance: 0, efficiency: 0 };
+
+    const rawTotal = driveCount * sizeInTB;
     let usableTB = 0;
-    let faultTolerance = "";
-    let writePenalty = 1;
+    let maxFault = 0;
 
     switch (raidType) {
-      case "raid0":
-        usableTB = rawTB;
-        faultTolerance = "0 Drives (No Redundancy)";
-        writePenalty = 1;
+      case "RAID0":
+        usableTB = activeDrives * sizeInTB;
+        maxFault = 0;
         break;
-      case "raid1":
-        usableTB = driveCapacityTB;
-        faultTolerance = `${driveCount - 1} Drives`;
-        writePenalty = driveCount;
+      case "RAID1":
+        usableTB = activeDrives >= 2 ? sizeInTB : 0;
+        maxFault = activeDrives - 1;
         break;
-      case "raid5":
-      case "zfs_z1":
-        usableTB = (driveCount - 1) * driveCapacityTB;
-        faultTolerance = "1 Drive";
-        writePenalty = 4;
+      case "RAID5":
+        usableTB = activeDrives >= 3 ? (activeDrives - 1) * sizeInTB : 0;
+        maxFault = 1;
         break;
-      case "raid6":
-      case "zfs_z2":
-        usableTB = (driveCount - 2) * driveCapacityTB;
-        faultTolerance = "2 Drives";
-        writePenalty = 6;
+      case "RAID6":
+        usableTB = activeDrives >= 4 ? (activeDrives - 2) * sizeInTB : 0;
+        maxFault = 2;
         break;
-      case "raid10":
-      case "zfs_mirror":
-        usableTB = (driveCount / 2) * driveCapacityTB;
-        faultTolerance = "Up to 1 Drive per mirror pair";
-        writePenalty = 2;
+      case "RAID10":
+        usableTB = activeDrives >= 4 && activeDrives % 2 === 0 ? (activeDrives / 2) * sizeInTB : 0;
+        maxFault = activeDrives >= 4 ? Math.floor(activeDrives / 2) : 0;
         break;
-      case "zfs_z3":
-        usableTB = (driveCount - 3) * driveCapacityTB;
-        faultTolerance = "3 Drives";
-        writePenalty = 8;
+      case "RAID50":
+        usableTB = activeDrives >= 6 && activeDrives % 2 === 0 ? (activeDrives - 2) * sizeInTB : 0;
+        maxFault = 2;
+        break;
+      case "RAID60":
+        usableTB = activeDrives >= 8 && activeDrives % 2 === 0 ? (activeDrives - 4) * sizeInTB : 0;
+        maxFault = 4;
         break;
       default:
         usableTB = 0;
     }
 
-    if (driveCount < 2) usableTB = 0;
-
-    // 十进制 TB 转 二进制 TiB (Factor: 1000^4 / 1024^4 ≈ 0.909494)
-    const rawTiB = rawTB * 0.909494;
-    const usableTiB = usableTB * 0.909494;
-    const fsUsableTiB = usableTiB * (1 - fsOverhead / 100);
-
-    // 成本计算
-    const totalCost = driveCount * drivePrice;
-    const costPerUsableTB = usableTB > 0 ? totalCost / usableTB : 0;
-
-    // 性能 IOPS 估算逻辑
-    const singleReadIops = presetKey === "custom" ? customReadIops : DRIVE_PRESETS[presetKey].rIops;
-    const singleWriteIops = presetKey === "custom" ? customWriteIops : DRIVE_PRESETS[presetKey].wIops;
-
-    const totalRawReadIops = singleReadIops * driveCount;
-    const totalRawWriteIops = (singleWriteIops * driveCount) / writePenalty;
-
-    const rFrac = readRatio / 100;
-    const wFrac = (100 - readRatio) / 100;
-    
-    // 混合读写最大 Effective IOPS
-    const effectiveIOPS = Math.round(1 / (rFrac / totalRawReadIops + wFrac / totalRawWriteIops));
+    const usableBinary = usableTB * (1000 ** 4 / 1024 ** 4); // Convert TB -> TiB
+    const efficiency = rawTotal > 0 ? (usableTB / rawTotal) * 100 : 0;
 
     return {
-      rawTB,
-      rawTiB,
-      usableTB,
-      usableTiB,
-      fsUsableTiB,
-      faultTolerance,
-      totalCost,
-      costPerUsableTB,
-      effectiveIOPS,
-      totalRawReadIops,
-      totalRawWriteIops,
+      raw: rawTotal,
+      usableDecimal: usableTB,
+      usableBinary: usableBinary,
+      faultTolerance: maxFault,
+      efficiency: efficiency,
     };
   };
 
-  const results = calculateCapacity();
+  const results = calculateRaid();
+  const today = new Date().toISOString().split("T")[0];
 
-  // 一键复制方案摘要
-  const handleCopySummary = () => {
-    const summaryText = `====================================
-STORAGE SPECIFICATION SUMMARY
-====================================
-• Hardware: ${driveCount} x ${driveCapacityTB}TB (${DRIVE_PRESETS[presetKey]?.label || "Custom"})
-• RAID Config: ${raidType.toUpperCase()} (${results.faultTolerance} Fault Tolerance)
-• Raw Capacity: ${results.rawTB.toFixed(2)} TB (${results.rawTiB.toFixed(2)} TiB)
-• Usable Capacity: ${results.usableTB.toFixed(2)} TB (${results.usableTiB.toFixed(2)} TiB)
-• Net Usable (Excl. ${fsOverhead}% FS Overhead): ${results.fsUsableTiB.toFixed(2)} TiB
-------------------------------------
-PERFORMANCE & COST ESTIMATION
-• Est. Mixed IOPS (${readRatio}% Read / ${100 - readRatio}% Write): ~${results.effectiveIOPS.toLocaleString()} IOPS
-• Max Read IOPS: ~${Math.round(results.totalRawReadIops).toLocaleString()} IOPS
-• Total Hardware Cost: $${results.totalCost.toLocaleString()} USD
-• Cost per Usable TB: $${results.costPerUsableTB.toFixed(2)} USD / TB
-====================================`;
+  const profileText = `===================================================================
+                     THUNDERSERV RAID HARDWARE PROFILE
+                      https://thunderserv.com
+===================================================================
+Generated Date  : ${today}
+Module          : Enterprise RAID Storage Array Calculator
 
-    navigator.clipboard.writeText(summaryText);
+[ARRAY CONFIGURATION]
+-------------------------------------------------------------------
+• Disk Count     : ${driveCount} Drives (${hotSpares} Hot Spare)
+• Single Capacity: ${driveSize} ${sizeUnit}
+• RAID Level     : ${raidType}
+
+[ARRAY PERFORMANCE & CAPACITY]
+-------------------------------------------------------------------
+• Total Raw Storage    : ${results.raw.toFixed(2)} TB
+• Usable Capacity (DEC): ~${results.usableDecimal.toFixed(2)} TB
+• Usable Capacity (BIN): ~${results.usableBinary.toFixed(2)} TiB
+• Fault Tolerance      : Up to ${results.faultTolerance} Disk Failure(s)
+• Storage Efficiency   : ${results.efficiency.toFixed(1)}%
+
+===================================================================
+Powered by ThunderServ Infrastructure Solutions | thunderserv.com
+===================================================================`;
+
+  const handleCopyProfile = () => {
+    navigator.clipboard.writeText(profileText);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-gray-100 font-sans">
-      {/* 统一 Header */}
-      <header className="border-b border-gray-800 bg-[#111827]/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xl text-white">⚡</div>
-            <span className="font-bold text-xl tracking-wider text-white">
-              ThunderServ <span className="text-blue-500 font-normal text-sm">Tools</span>
-            </span>
-          </a>
-          <a href="/" className="text-xs text-gray-400 hover:text-white transition">
-            ← Back to All Tools
-          </a>
-        </div>
-      </header>
+    <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
+      {/* Back Nav */}
+      <div className="mb-8">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-blue-400 hover:text-blue-300 border border-gray-700/80 px-4 py-2.5 rounded-xl font-semibold text-sm transition shadow-md"
+        >
+          <span>← 🏠</span>
+          <span>{language === "zh" ? "返回工具列表" : "Back to All Tools"}</span>
+        </Link>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* SINGLE CLEAN HEADER (Fixes duplicate logos) */}
+      <div className="mb-8 border-b border-gray-800 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-white mb-2">
+            💽 {language === "zh" ? "企业级 RAID 阵列容量计算器" : "Enterprise RAID Storage Calculator"}
+          </h1>
+          <p className="text-gray-400 text-sm">
+            {language === "zh"
+              ? "计算各 RAID 阵列的可用容量、二进制 TiB 换算、冗余利用率与容错硬盘数。"
+              : "Calculate usable storage capacity, binary TiB conversions, fault tolerance, and array efficiency."}
+          </p>
+        </div>
+        <div className="text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
+          Branded for <span className="text-blue-400 font-bold">thunderserv.com</span>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+        {/* Controls */}
+        <div className="lg:col-span-7 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 space-y-6">
+          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
+            🛠️ {language === "zh" ? "阵列硬件配置" : "Hardware Configuration"}
+          </h2>
+
+          {/* Drive Count */}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Enterprise RAID & NVMe Storage Calculator
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">
-              Calculate usable capacities (TB/TiB), ZFS pools, IOPS performance penalty, and cost-per-TB metrics.
-            </p>
+            <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+              {language === "zh" ? "硬盘数量 (Drives Count)" : "Number of Drives"}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={128}
+              value={driveCount}
+              onChange={(e) => setDriveCount(Math.max(1, Number(e.target.value)))}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-lg"
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {[2, 4, 8, 12, 16, 24].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setDriveCount(c)}
+                  className="text-xs bg-gray-950 hover:bg-gray-800 text-gray-300 border border-gray-800 px-2.5 py-1 rounded-md font-mono"
+                >
+                  {c} Disks
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Drive Size & Unit */}
+          <div>
+            <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+              {language === "zh" ? "单盘容量" : "Single Drive Size"}
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="number"
+                min={1}
+                value={driveSize}
+                onChange={(e) => setDriveSize(Math.max(1, Number(e.target.value)))}
+                className="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-lg"
+              />
+              <select
+                value={sizeUnit}
+                onChange={(e) => setSizeUnit(e.target.value as "TB" | "GB")}
+                className="bg-gray-800 text-gray-200 px-4 py-2.5 rounded-xl border border-gray-700 font-bold"
+              >
+                <option value="TB">TB</option>
+                <option value="GB">GB</option>
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[2, 4, 8, 12, 16, 18, 20, 22].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setDriveSize(s);
+                    setSizeUnit("TB");
+                  }}
+                  className="text-xs bg-gray-950 hover:bg-gray-800 text-gray-300 border border-gray-800 px-2 py-1 rounded-md font-mono"
+                >
+                  {s} TB
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RAID Level */}
+          <div>
+            <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+              {language === "zh" ? "RAID 模式" : "RAID Mode"}
+            </label>
+            <select
+              value={raidType}
+              onChange={(e) => setRaidType(e.target.value as any)}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono text-base font-semibold"
+            >
+              <option value="RAID0">RAID 0 (Performance - No Fault Tolerance)</option>
+              <option value="RAID1">RAID 1 (Mirroring - High Redundancy)</option>
+              <option value="RAID5">RAID 5 (Single Parity - Min 3 Disks)</option>
+              <option value="RAID6">RAID 6 (Dual Parity - Min 4 Disks)</option>
+              <option value="RAID10">RAID 10 (Striped Mirror - Min 4 Disks)</option>
+              <option value="RAID50">RAID 50 (Dual RAID 5 Groups - Min 6 Disks)</option>
+              <option value="RAID60">RAID 60 (Dual RAID 6 Groups - Min 8 Disks)</option>
+            </select>
+          </div>
+
+          {/* Hot Spares */}
+          <div>
+            <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+              {language === "zh" ? "热备盘数 (Hot Spares)" : "Hot Spare Drives"}
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={driveCount - 1}
+              value={hotSpares}
+              onChange={(e) => setHotSpares(Math.min(driveCount - 1, Math.max(0, Number(e.target.value))))}
+              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-white font-mono"
+            />
+          </div>
+        </div>
+
+        {/* Results Panel */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-blue-950/40 via-gray-900 to-gray-900 border border-blue-900/50 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">📊 RAID Results</h2>
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded">
+                thunderserv.com
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <div className="text-xs font-semibold text-gray-400">Usable Storage Capacity (Decimal)</div>
+                <div className="text-4xl font-black text-white font-mono mt-1">
+                  ~{results.usableDecimal.toFixed(2)} <span className="text-xl font-bold text-blue-400">TB</span>
+                </div>
+                <div className="text-xs font-mono text-gray-400 mt-1">
+                  ≈ {results.usableBinary.toFixed(2)} TiB (Binary Operating System)
+                </div>
+              </div>
+
+              <div className="border-t border-gray-800 pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-semibold text-gray-400">Total Raw Space</div>
+                  <div className="text-lg font-bold text-gray-200 font-mono">{results.raw.toFixed(2)} TB</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-gray-400">Storage Efficiency</div>
+                  <div className="text-lg font-bold text-emerald-400 font-mono">{results.efficiency.toFixed(1)}%</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-950/80 border border-gray-800 rounded-xl p-4">
+                <div className="text-xs font-semibold text-gray-400 mb-1">🛡️ Drive Fault Tolerance</div>
+                <div className="text-lg font-bold text-yellow-400 font-mono">
+                  Up to {results.faultTolerance} Disk Failure(s)
+                </div>
+                <div className="text-[11px] text-gray-500 mt-0.5">
+                  Array type: {raidType} ({driveCount - hotSpares} active + {hotSpares} spare)
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button
-            onClick={handleCopySummary}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center space-x-2 border border-blue-400/30 shadow-lg shadow-blue-600/20"
+            onClick={handleCopyProfile}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition mt-6"
           >
-            <span>{copied ? "✓ Copied to Clipboard!" : "📋 Copy Architecture Summary"}</span>
+            {copied ? "✓ Copied Profile Text!" : "Copy Branded Profile Text"}
           </button>
         </div>
+      </div>
 
-        {/* 顶部主配置区 */}
-        <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
-          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">1. Disk Array & Drive Specifications</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            
-            {/* 硬盘数量 */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">Number of Drives</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={driveCount}
-                onChange={(e) => setDriveCount(Math.max(1, parseInt(e.target.value) || 0))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-
-            {/* 单盘容量 */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">Single Drive Capacity (TB)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={driveCapacityTB}
-                onChange={(e) => setDriveCapacityTB(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-
-            {/* RAID / ZFS 类型 */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">RAID / ZFS Configuration</label>
-              <select
-                value={raidType}
-                onChange={(e) => setRaidType(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              >
-                <optgroup label="Hardware RAID">
-                  <option value="raid0">RAID 0 (Striping)</option>
-                  <option value="raid1">RAID 1 (Mirroring)</option>
-                  <option value="raid5">RAID 5 (Single Parity)</option>
-                  <option value="raid6">RAID 6 (Dual Parity)</option>
-                  <option value="raid10">RAID 10 (Striped Mirrors)</option>
-                </optgroup>
-                <optgroup label="ZFS Software Storage">
-                  <option value="zfs_z1">ZFS RAID-Z1 (1-Drive Parity)</option>
-                  <option value="zfs_z2">ZFS RAID-Z2 (2-Drive Parity)</option>
-                  <option value="zfs_z3">ZFS RAID-Z3 (3-Drive Parity)</option>
-                  <option value="zfs_mirror">ZFS Striped Mirrors (ZFS Mirror)</option>
-                </optgroup>
-              </select>
-            </div>
-
-            {/* 单盘价格 */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">Single Drive Price ($ USD)</label>
-              <input
-                type="number"
-                value={drivePrice}
-                onChange={(e) => setDrivePrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 核心数据卡片展示 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-5 space-y-1">
-            <div className="text-xs text-gray-400">Usable Space (Decimal TB)</div>
-            <div className="text-2xl font-black font-mono text-emerald-400">{results.usableTB.toFixed(2)} TB</div>
-            <div className="text-xs text-gray-500">Raw: {results.rawTB.toFixed(2)} TB</div>
-          </div>
-
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-5 space-y-1">
-            <div className="text-xs text-gray-400">OS Recognized Space (Binary TiB)</div>
-            <div className="text-2xl font-black font-mono text-blue-400">{results.usableTiB.toFixed(2)} TiB</div>
-            <div className="text-xs text-gray-500">Net ({fsOverhead}% FS Loss): <span className="text-gray-300 font-bold">{results.fsUsableTiB.toFixed(2)} TiB</span></div>
-          </div>
-
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-5 space-y-1">
-            <div className="text-xs text-gray-400">Total Hardware Cost</div>
-            <div className="text-2xl font-black font-mono text-amber-400">${results.totalCost.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">Cost/Usable TB: <span className="text-amber-300 font-bold">${results.costPerUsableTB.toFixed(2)}</span></div>
-          </div>
-
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-5 space-y-1">
-            <div className="text-xs text-gray-400">Fault Tolerance</div>
-            <div className="text-base font-bold text-white mt-1">{results.faultTolerance}</div>
-            <div className="text-xs text-gray-500">Allowed Drive Failures</div>
-          </div>
-        </div>
-
-        {/* 高级参数：IOPS & 性能计算模块 */}
-        <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
-          <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">2. Drive Performance & Workload IOPS Estimation</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">Drive Hardware Profile</label>
-              <select
-                value={presetKey}
-                onChange={(e) => handlePresetChange(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              >
-                {Object.entries(DRIVE_PRESETS).map(([key, item]) => (
-                  <option key={key} value={key}>{item.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">
-                Workload Read / Write Ratio ({readRatio}% Read / {100 - readRatio}% Write)
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={readRatio}
-                onChange={(e) => setReadRatio(parseInt(e.target.value))}
-                className="w-full accent-blue-500 cursor-pointer mt-2"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 block">
-                Filesystem / Metadata Safety Reserve ({fsOverhead}%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="30"
-                value={fsOverhead}
-                onChange={(e) => setFsOverhead(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-          </div>
-
-          {/* 性能推算结果面板 */}
-          <div className="pt-4 border-t border-gray-800 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
-            <div className="bg-gray-900/80 p-4 rounded-xl border border-gray-800">
-              <div className="text-gray-400 mb-1">Max Mixed IOPS ({readRatio}/{100-readRatio})</div>
-              <div className="text-xl font-bold text-emerald-400">~{results.effectiveIOPS.toLocaleString()} IOPS</div>
-              <div className="text-[10px] text-gray-500 mt-1">Calculated with RAID Write Penalty</div>
-            </div>
-
-            <div className="bg-gray-900/80 p-4 rounded-xl border border-gray-800">
-              <div className="text-gray-400 mb-1">Total Array Max Read IOPS</div>
-              <div className="text-xl font-bold text-white">~{Math.round(results.totalRawReadIops).toLocaleString()} IOPS</div>
-              <div className="text-[10px] text-gray-500 mt-1">Combined Read Throughput limit</div>
-            </div>
-
-            <div className="bg-gray-900/80 p-4 rounded-xl border border-gray-800">
-              <div className="text-gray-400 mb-1">Total Array Max Write IOPS</div>
-              <div className="text-xl font-bold text-amber-400">~{Math.round(results.totalRawWriteIops).toLocaleString()} IOPS</div>
-              <div className="text-[10px] text-gray-500 mt-1">After RAID Write Penalty</div>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+      {/* Export Preview */}
+      <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6">
+        <h3 className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-3">📄 BRANDED EXPORT DATA PREVIEW</h3>
+        <pre className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed">
+          {profileText}
+        </pre>
+      </div>
+    </main>
   );
 }

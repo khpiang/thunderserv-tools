@@ -3,77 +3,165 @@
 import React, { useState } from "react";
 
 export default function SubnetCalculator() {
-  const [cidr, setCidr] = useState<number>(29);
+  const [input, setInput] = useState("192.168.1.2/29");
+  const [ip, setIp] = useState("192.168.1.2");
+  const [cidr, setCidr] = useState(29);
 
-  const getSubnetInfo = () => {
-    switch (cidr) {
-      case 30: return { netmask: "255.255.255.252", totalIp: 4, usableIp: 2, desc: "P2P Gateway Link" };
-      case 29: return { netmask: "255.255.255.248", totalIp: 8, usableIp: 5, desc: "Standard Small Block (/29 Allocation)" };
-      case 28: return { netmask: "255.255.255.240", totalIp: 16, usableIp: 13, desc: "Medium IP Block (/28 Allocation)" };
-      case 27: return { netmask: "255.255.255.224", totalIp: 32, usableIp: 29, desc: "Large Cluster Block (/27 Allocation)" };
-      case 24: return { netmask: "255.255.255.0", totalIp: 256, usableIp: 253, desc: "Full Class C /24 Subnet Block" };
-      default: return { netmask: "255.255.255.248", totalIp: 8, usableIp: 5, desc: "Custom Block" };
+  // Parse IP input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    if (val.includes("/")) {
+      const [ipPart, maskPart] = val.split("/");
+      setIp(ipPart);
+      const maskNum = parseInt(maskPart, 10);
+      if (!isNaN(maskNum) && maskNum >= 0 && maskNum <= 32) {
+        setCidr(maskNum);
+      }
+    } else {
+      setIp(val);
     }
   };
 
-  const info = getSubnetInfo();
+  const handleCidrChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCidr = parseInt(e.target.value, 10);
+    setCidr(newCidr);
+    setInput(`${ip}/${newCidr}`);
+  };
+
+  // Convert IP string to 32-bit integer
+  const ipToInt = (ipStr: string): number | null => {
+    const parts = ipStr.trim().split(".");
+    if (parts.length !== 4) return null;
+    let num = 0;
+    for (let i = 0; i < 4; i++) {
+      const part = parseInt(parts[i], 10);
+      if (isNaN(part) || part < 0 || part > 255) return null;
+      num = (num << 8) + part;
+    }
+    return num >>> 0;
+  };
+
+  // Convert 32-bit integer to IP string
+  const intToIp = (num: number): string => {
+    return [
+      (num >>> 24) & 255,
+      (num >>> 16) & 255,
+      (num >>> 8) & 255,
+      num & 255,
+    ].join(".");
+  };
+
+  // Calculate subnet details
+  const calculateSubnet = () => {
+    const ipNum = ipToInt(ip);
+    if (ipNum === null) return null;
+
+    const maskNum = cidr === 0 ? 0 : (~0 << (32 - cidr)) >>> 0;
+    const wildcardNum = (~maskNum) >>> 0;
+    const networkNum = (ipNum & maskNum) >>> 0;
+    const broadcastNum = (networkNum | wildcardNum) >>> 0;
+
+    let totalHosts = Math.pow(2, 32 - cidr);
+    let usableHosts = cidr >= 31 ? (cidr === 31 ? 2 : 1) : totalHosts - 2;
+
+    let firstUsable = cidr >= 31 ? networkNum : networkNum + 1;
+    let lastUsable = cidr >= 31 ? broadcastNum : broadcastNum - 1;
+
+    return {
+      network: intToIp(networkNum),
+      broadcast: intToIp(broadcastNum),
+      netmask: intToIp(maskNum),
+      wildcard: intToIp(wildcardNum),
+      firstUsable: intToIp(firstUsable),
+      lastUsable: intToIp(lastUsable),
+      usableHosts,
+      totalHosts,
+    };
+  };
+
+  const result = calculateSubnet();
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-gray-100 font-sans">
-      <header className="border-b border-gray-800 bg-[#111827]/80 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xl text-white">⚡</div>
-            <span className="font-bold text-xl tracking-wider text-white">ThunderServ <span className="text-blue-500 font-normal text-sm">Tools</span></span>
-          </a>
-          <a href="/" className="text-xs text-gray-400 hover:text-white transition">← Back to All Tools</a>
-        </div>
-      </header>
+    <div style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}>
+      <h1>Subnet Calculator</h1>
+      <p>Calculate network ranges, usable IPs, and broadcast addresses for CIDR blocks.</p>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <div style={{ display: "grid", gap: "1rem", marginBottom: "2rem", gridTemplateColumns: "2fr 1fr" }}>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">IPv4 Subnet & CIDR Calculator</h1>
-          <p className="text-gray-400 text-sm mt-1">Calculate netmasks, total IP counts, and usable host addresses for dedicated server IP allocations.</p>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            IP Address / CIDR
+          </label>
+          <input
+            type="text"
+            value={input}
+            onChange={handleInputChange}
+            placeholder="e.g. 192.168.1.2/29"
+            style={{ width: "100%", padding: "0.5rem", fontSize: "1rem", borderRadius: "4px", border: "1px solid #ccc" }}
+          />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 space-y-6">
-            <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">Select Subnet Prefix (CIDR)</h2>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400">CIDR Notation</label>
-              <select value={cidr} onChange={(e) => setCidr(Number(e.target.value))} className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none">
-                <option value={30}>/30 (2 Usable IPs)</option>
-                <option value={29}>/29 (5 Usable IPs - Default Enterprise)</option>
-                <option value={28}>/28 (13 Usable IPs)</option>
-                <option value={27}>/27 (29 Usable IPs)</option>
-                <option value={24}>/24 (253 Usable IPs - Full Subnet Block)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6 bg-[#111827] border border-gray-800 rounded-2xl p-6 flex flex-col justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white border-b border-gray-800 pb-3">Subnet Allocation Details</h2>
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">Usable Host IPs</div>
-                  <div className="text-2xl font-extrabold text-emerald-400 mt-1">{info.usableIp} IPs</div>
-                </div>
-                <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4">
-                  <div className="text-xs text-gray-400">Subnet Netmask</div>
-                  <div className="text-lg font-bold text-white mt-1">{info.netmask}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 text-xs text-gray-300">
-              💡 <strong>Need Dedicated IP Subnets or ARIN Justification Support?</strong> We offer clean /29, /28, and routed /24 IPv4 blocks for infrastructure clients. Contact <strong className="text-blue-400">admin@thunderserv.com</strong>.
-            </div>
-          </div>
+        <div>
+          <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}>
+            Subnet Mask
+          </label>
+          <select
+            value={cidr}
+            onChange={handleCidrChange}
+            style={{ width: "100%", padding: "0.5rem", fontSize: "1rem", borderRadius: "4px", border: "1px solid #ccc" }}
+          >
+            {[24, 25, 26, 27, 28, 29, 30].map((prefix) => (
+              <option key={prefix} value={prefix}>
+                /{prefix}
+              </option>
+            ))}
+          </select>
         </div>
-      </main>
+      </div>
+
+      {result ? (
+        <div style={{ background: "#f8f9fa", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e9ecef" }}>
+          <h2>Results for {ip}/{cidr}</h2>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+            <tbody>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Subnet Network Address:</td>
+                <td>{result.network}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>First Usable IP:</td>
+                <td>{result.firstUsable}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Last Usable IP:</td>
+                <td>{result.lastUsable}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Broadcast Address:</td>
+                <td>{result.broadcast}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Usable Hosts:</td>
+                <td>{result.usableHosts.toLocaleString()} IPs</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Total IPs:</td>
+                <td>{result.totalHosts.toLocaleString()} IPs</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Subnet Mask:</td>
+                <td>{result.netmask}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", fontWeight: "bold" }}>Wildcard Mask:</td>
+                <td>{result.wildcard}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p style={{ color: "red" }}>Please enter a valid IP address (e.g., 192.168.1.2).</p>
+      )}
     </div>
   );
 }
-

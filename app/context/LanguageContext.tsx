@@ -15,7 +15,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Header
     "nav.contact": "Contact Sales Advisory",
     
-    // Hero & Navigation
+    // Hero Section
     "hero.title": "Enterprise Infrastructure",
     "hero.title_accent": "Toolbox",
     "hero.subtitle": "Free, fast, and precise utilities designed for IT architects, system administrators, and bare-metal server operators.",
@@ -31,32 +31,38 @@ const translations: Record<Language, Record<string, string>> = {
     "badge.popular": "POPULAR",
     "badge.new": "NEW",
     
-    // Bandwidth Calculator Section
+    // Contact Section
+    "contact.title": "Need Enterprise IaaS Solutions or Custom Hardware?",
+    "contact.subtitle": "Get in touch with our infrastructure experts for high-bandwidth bare-metal, custom routing, or wholesale server deployment.",
+    "contact.tg": "Telegram Support",
+    "contact.email": "Sales Email",
+
+    // Bandwidth Calculator Page
     "calc.title": "Network Bandwidth & Traffic Calculator",
-    "calc.subtitle": "Calculate bandwidth, data transfer, or port utilization accurately",
-    "calc.mode.bandwidth": "Bandwidth & Usage",
-    "calc.mode.transfer": "Transfer Speed / Time",
-    "label.portSpeed": "Port Speed",
-    "label.utilization": "Bandwidth Utilization (%)",
-    "label.duration": "Duration / Time Frame",
+    "calc.subtitle": "Calculate bandwidth, data transfer, or port utilization accurately for enterprise network planning.",
+    "calc.mode.bandwidth": "Port Speed to Data Volume",
+    "calc.mode.transfer": "Data Volume & Time to Required Bandwidth",
+    "label.portSpeed": "Port Speed / Bandwidth Limit",
+    "label.utilization": "Average Bandwidth Utilization (%)",
+    "label.duration": "Time Period",
     "label.customDays": "Custom Days",
-    "label.fileSize": "File Size / Data Volume",
+    "label.fileSize": "Total Data Transferred / Target Traffic",
     "label.speed": "Speed / Bandwidth",
     "label.days": "days",
     "time.1day": "1 Day",
     "time.7days": "7 Days (1 Week)",
     "time.30days": "30 Days (1 Month)",
     "time.custom": "Custom",
-    "result.totalTraffic": "Total Data Transferred",
+    "result.totalTraffic": "Total Traffic Consumed",
     "result.avgBandwidth": "Average Bandwidth Required",
     "result.estTime": "Estimated Transfer Time",
-    "result.maxCapacity": "Maximum Theoretical Capacity",
+    "result.maxCapacity": "Theoretical Max Volume",
   },
   zh: {
     // Header
     "nav.contact": "联系架构师咨询",
     
-    // Hero & Navigation
+    // Hero Section
     "hero.title": "企业级 IT 基础设施",
     "hero.title_accent": "工具箱",
     "hero.subtitle": "专为 IT 架构师、系统管理员及裸金属服务器运维人员打造的精准计算与规划工具。",
@@ -72,24 +78,30 @@ const translations: Record<Language, Record<string, string>> = {
     "badge.popular": "热门",
     "badge.new": "最新",
     
-    // Bandwidth Calculator Section
+    // Contact Section
+    "contact.title": "需要企业级 IaaS 方案或定制服务器硬件？",
+    "contact.subtitle": "联系我们的基础设施架构师，获取大带宽裸金属、定制网络路由或服务器批发部署方案。",
+    "contact.tg": "Telegram 快捷沟通",
+    "contact.email": "商务与技术邮箱",
+
+    // Bandwidth Calculator Page
     "calc.title": "网络带宽与流量计算器",
-    "calc.subtitle": "精准计算带宽占用、流量消耗及传输时间",
-    "calc.mode.bandwidth": "带宽与流量换算",
-    "calc.mode.transfer": "传输速度与耗时",
-    "label.portSpeed": "端口带宽/速率",
+    "calc.subtitle": "精准计算带宽占用、流量消耗及传输时间，专为企业网络规划打造。",
+    "calc.mode.bandwidth": "按带宽算总流量",
+    "calc.mode.transfer": "按流量和时间反算所需带宽",
+    "label.portSpeed": "端口带宽 / 速率上限",
     "label.utilization": "平均带宽利用率 (%)",
     "label.duration": "计算时长",
     "label.customDays": "自定义天数",
-    "label.fileSize": "文件大小 / 数据量",
+    "label.fileSize": "传输数据总量 / 目标流量",
     "label.speed": "传输速度 / 带宽",
     "label.days": "天",
     "time.1day": "1 天",
     "time.7days": "7 天 (1 周)",
     "time.30days": "30 天 (1 个月)",
     "time.custom": "自定义",
-    "result.totalTraffic": "总消耗流量",
-    "result.avgBandwidth": "所需平均带宽",
+    "result.totalTraffic": "预估消耗流量",
+    "result.avgBandwidth": "平均所需带宽",
     "result.estTime": "预估传输耗时",
     "result.maxCapacity": "理论最大传输量",
   },

@@ -58,9 +58,10 @@ export default function BandwidthCalculator() {
   };
 
   // ----------------------------------------------------
-  // Module 2 State: Data Cap Equivalent
+  // Module 2 State: Data Cap Equivalent & Port Burn Time
   // ----------------------------------------------------
   const [monthlyCapTB, setMonthlyCapTB] = useState<number>(300);
+  const [capAssignedPortGbps, setCapAssignedPortGbps] = useState<number>(1); // Default 1 Gbps port assigned
 
   const calculateCapProfile = () => {
     const totalBits = monthlyCapTB * 8 * 1000 * 1000;
@@ -68,7 +69,18 @@ export default function BandwidthCalculator() {
     const avgMbps = totalBits / monthSeconds;
     const avgMBps = (avgMbps * (1 - tcpOverhead / 100)) / 8;
 
-    return { avgMbps, avgMBps };
+    // Time to exhaust data cap at 100% full port speed
+    const portMbps = capAssignedPortGbps * 1000;
+    let burnDays = 0;
+    let burnHours = 0;
+    
+    if (portMbps > 0) {
+      const totalSecondsToBurn = totalBits / portMbps;
+      burnDays = Math.floor(totalSecondsToBurn / (24 * 3600));
+      burnHours = Math.floor((totalSecondsToBurn % (24 * 3600)) / 3600);
+    }
+
+    return { avgMbps, avgMBps, burnDays, burnHours };
   };
 
   // ----------------------------------------------------
@@ -117,12 +129,15 @@ PORT HARDWARE PROFILE
 • Max Daily Throughput Limit: ~${portRes.maxDailyTB.toFixed(1)} TB / Day
 ====================================`;
     } else if (activeTab === "cap") {
+      const assignedPortText = capAssignedPortGbps >= 1 ? `${capAssignedPortGbps} Gbps` : `${capAssignedPortGbps * 1000} Mbps`;
       summaryText = `====================================
-MONTHLY DATA CAP EQUIVALENT
+MONTHLY DATA CAP & PORT ANALYSIS
 ====================================
 • Monthly Allocation: ${monthlyCapTB} TB / Month
-• 7x24 Continuous Equivalent Bandwidth: ~${capRes.avgMbps.toFixed(1)} Mbps
-• Flat Continuous Download Speed: ~${capRes.avgMBps.toFixed(1)} MB/s (Excl. ${tcpOverhead}% TCP Overhead)
+• Assigned Port Speed: ${assignedPortText}
+• 7x24 Continuous Bandwidth: ~${capRes.avgMbps.toFixed(1)} Mbps
+• Flat Continuous Speed: ~${capRes.avgMBps.toFixed(1)} MB/s (Excl. ${tcpOverhead}% TCP Overhead)
+• Full Port Burn-Through Time: ~${capRes.burnDays} days ${capRes.burnHours} hrs (at 100% port saturation)
 ====================================`;
     } else {
       summaryText = `====================================
@@ -217,9 +232,8 @@ DATA MIGRATION ESTIMATE
               <h2 className="text-sm font-bold text-blue-400 uppercase tracking-wider">
                 Port Hardware Capabilities
               </h2>
-              {/* Presets */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-gray-400">Presets:</span>
+                <span className="text-xs text-gray-400">Port Presets:</span>
                 {PORT_PRESETS.map((p) => (
                   <button
                     key={p.label}
@@ -265,7 +279,6 @@ DATA MIGRATION ESTIMATE
               </div>
             </div>
 
-            {/* Results */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-800">
               <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
                 <div className="text-xs text-gray-400">Real Max Download Speed</div>
@@ -311,7 +324,7 @@ DATA MIGRATION ESTIMATE
               </h2>
               {/* Presets */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-gray-400">Presets:</span>
+                <span className="text-xs text-gray-400">Cap Presets:</span>
                 {CAP_PRESETS.map((c) => (
                   <button
                     key={c.label}
@@ -328,10 +341,10 @@ DATA MIGRATION ESTIMATE
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-gray-400 block">
-                  Allocated Monthly Data Cap (TB) [Custom Input]
+                  Monthly Data Cap (TB) [Custom]
                 </label>
                 <input
                   type="number"
@@ -339,6 +352,24 @@ DATA MIGRATION ESTIMATE
                   onChange={(e) => setMonthlyCapTB(Math.max(0, parseFloat(e.target.value) || 0))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
                 />
+              </div>
+
+              {/* Added Port Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-400 block">
+                  Assigned Port Speed (Gbps)
+                </label>
+                <select
+                  value={capAssignedPortGbps}
+                  onChange={(e) => setCapAssignedPortGbps(parseFloat(e.target.value))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono cursor-pointer"
+                >
+                  {PORT_PRESETS.map((p) => (
+                    <option key={p.label} value={p.value}>
+                      {p.label} Port
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -357,24 +388,34 @@ DATA MIGRATION ESTIMATE
             </div>
 
             {/* Results */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-800">
               <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
                 <div className="text-xs text-gray-400">7x24 Continuous Bandwidth</div>
                 <div className="text-2xl font-black font-mono text-emerald-400">
                   ~{capRes.avgMbps.toFixed(1)} Mbps
                 </div>
                 <div className="text-[11px] text-gray-500">
-                  Flat usage spread evenly over 30 days (720 hrs)
+                  Flat usage spread evenly over 30 days
                 </div>
               </div>
 
               <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
-                <div className="text-xs text-gray-400">Flat Continuous Download Speed</div>
+                <div className="text-xs text-gray-400">Flat Continuous Speed</div>
                 <div className="text-2xl font-black font-mono text-blue-400">
                   ~{capRes.avgMBps.toFixed(1)} MB/s
                 </div>
                 <div className="text-[11px] text-gray-500">
                   Excluding {tcpOverhead}% TCP/IP protocol overhead
+                </div>
+              </div>
+
+              <div className="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-1">
+                <div className="text-xs text-gray-400">Full Port Burn-Through Time</div>
+                <div className="text-2xl font-black font-mono text-amber-400">
+                  ~{capRes.burnDays}d {capRes.burnHours}h
+                </div>
+                <div className="text-[11px] text-gray-500">
+                  Time to deplete cap at 100% {capAssignedPortGbps >= 1 ? `${capAssignedPortGbps} Gbps` : `${capAssignedPortGbps * 1000} Mbps`} utilization
                 </div>
               </div>
             </div>
